@@ -21,9 +21,9 @@ TypoCore is designed to work alongside Typer Tool, focusing on layout, spacing, 
 - Tự động chia text thành **2 / 3 / 4 dòng**  
 - Giữ bố cục cân đối, dễ đọc  
 
-### 🔹 Điều chỉnh Typography
+### 🔹 Điều chỉnh Kích Thước
 - Tăng giảm nhanh **font size & leading**  
-- Tinh chỉnh khoảng cách chữ dễ dàng  
+- Tinh chỉnh khoảng cở chữ và cách chữ dễ dàng  
 
 ### 🔹 Công cụ nhanh
 - Resize, căn giữa  
@@ -31,7 +31,7 @@ TypoCore is designed to work alongside Typer Tool, focusing on layout, spacing, 
 - Copy / Paste hiệu ứng (FX)  
 
 ### 🔹 Logo Tool
-- Chọn logo trong setting  
+- Chọn logo trong phần setting  
 - Dán logo vào **tất cả ảnh đang mở**  
 
 ### 🔹 Tùy chỉnh panel
