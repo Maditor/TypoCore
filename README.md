@@ -10,6 +10,7 @@ TypoCore is designed to work alongside Typer Tool, focusing on layout, spacing, 
 
 ### 🔹 Yêu Cầu
 - Photoshop từ CC 2018 trở lên
+- Sử dụng cùng với Typer Tool để đạt hiệu suất cao hơn
 
 ### 🔹 Quick Layout
 - Xem nhanh nhiều bố cục bóng thoại chỉ với 1 lần load  
