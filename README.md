@@ -59,6 +59,8 @@ TypoCore tập trung vào **tốc độ, sự đơn giản và tính thực tế
 
 https://drive.google.com/drive/folders/1giaDXBR-Qn6iGMxBwE5yD-6j3jMYjIJo?usp=drive_link
 
+TypoCore By Maditor
+This project was built with the assistance of AI tools.
 
 
 
