@@ -1,7 +1,11 @@
 
 ## ✨ Tính năng của TypoCore
 
-TypoCore là panel CEP giúp tăng tốc quá trình typesetting webtoon với các công cụ đơn giản, dễ dùng và hiệu quả.
+TypoCore By Maditor
+
+This project was built with the assistance of AI tools.
+
+TypoCore is designed to work alongside Typer Tool, focusing on layout, spacing, and visual refinement to complete the typesetting workflow.
 
 
 ### 🔹 Yêu Cầu
@@ -34,7 +38,6 @@ TypoCore là panel CEP giúp tăng tốc quá trình typesetting webtoon với c
 - Thay đổi Load thoại Tự động - Thủ Công
 ---
 
-TypoCore tập trung vào **tốc độ, sự đơn giản và tính thực tế**, phù hợp cho workflow typesetting webtoon.
 
 ### 🔹 Hướng Dẫn Cài Đặt
 
@@ -58,10 +61,6 @@ TypoCore tập trung vào **tốc độ, sự đơn giản và tính thực tế
 ### 🔹 Hướng Dẫn Sử Dụng
 
 https://drive.google.com/drive/folders/1giaDXBR-Qn6iGMxBwE5yD-6j3jMYjIJo?usp=drive_link
-
-TypoCore By Maditor
-
-This project was built with the assistance of AI tools.
 
 
 
