@@ -26,7 +26,7 @@ TypoCore là panel CEP giúp tăng tốc quá trình typesetting webtoon với c
 - Dán logo vào **tất cả ảnh đang mở**  
 
 ### 🔹 Tùy chỉnh panel
-- Ẩn / hiện các tool không cần thiết  
+- Ẩn / hiện các chức năng không dùng đến
 - Thay đổi Load thoại Tự động - Thủ Công
 ---
 
