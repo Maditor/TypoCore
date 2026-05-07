@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<ExtensionManifest
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  Version="6.0"
+  ExtensionBundleId="com.typocore.panel"
+  ExtensionBundleVersion="1.1"
+  ExtensionBundleName="TypoCore">
+
+  <ExtensionList>
+    <Extension Id="com.typocore.panel" Version="1.1"/>
+  </ExtensionList>
+
+  <ExecutionEnvironment>
+    <HostList>
+      <!-- PHXS = Photoshop, version 19 = CC 2018, 25 = PS 2024 -->
+      <Host Name="PHXS" Version="[19.0,99.9]"/>
+      <Host Name="PHSP" Version="[19.0,99.9]"/>
+    </HostList>
+    <LocaleList>
+      <Locale Code="All"/>
+    </LocaleList>
+    <RequiredRuntimeList>
+      <!-- CSXS 8.0 cho CC 2018+, tương thích ngược lên các version mới hơn -->
+      <RequiredRuntime Name="CSXS" Version="8.0"/>
+    </RequiredRuntimeList>
+  </ExecutionEnvironment>
+
+  <DispatchInfoList>
+    <Extension Id="com.typocore.panel">
+      <DispatchInfo>
+        <Resources>
+          <MainPath>./index.html</MainPath>
+          <ScriptPath>./jsx/host.jsx</ScriptPath>
+          <CEFCommandLine>
+            <Parameter>--allow-file-access</Parameter>
+            <Parameter>--allow-file-access-from-files</Parameter>
+          </CEFCommandLine>
+        </Resources>
+        <Lifecycle>
+          <AutoVisible>true</AutoVisible>
+        </Lifecycle>
+        <UI>
+          <Type>Panel</Type>
+          <Menu>TypoCore</Menu>
+          <Icons>
+            <Icon Type="Normal">./icons/icon.png</Icon>
+            <Icon Type="RollOver">./icons/icon.png</Icon>
+            <Icon Type="DarkNormal">./icons/icon.png</Icon>
+            <Icon Type="DarkRollOver">./icons/icon.png</Icon>
+          </Icons>
+          <Geometry>
+            <Size>
+              <Height>450</Height>
+              <Width>220</Width>
+            </Size>
+            <MinSize>
+              <Height>735</Height>
+              <Width>200</Width>
+            </MinSize>
+            <MaxSize>
+              <Height>735</Height>
+              <Width>200</Width>
+            </MaxSize>
+          </Geometry>
+
+<AllowPopup>true</AllowPopup>
+
+        </UI>
+      </DispatchInfo>
+    </Extension>
+  </DispatchInfoList>
+
+</ExtensionManifest>
