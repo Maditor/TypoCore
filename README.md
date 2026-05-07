@@ -21,8 +21,8 @@ TypoCore là panel CEP giúp tăng tốc quá trình typesetting webtoon với c
 - Tinh chỉnh khoảng cách chữ dễ dàng  
 
 ### 🔹 Công cụ nhanh
-- Resize, căn giữa text  
-- Group, select, check layer  
+- Resize, căn giữa  
+- Group, select, Check
 - Copy / Paste hiệu ứng (FX)  
 
 ### 🔹 Logo Tool
