@@ -48,3 +48,5 @@ TypoCore tập trung vào **tốc độ, sự đơn giản và tính thực tế
 
 
 <img width="205" height="762" alt="Untitled-2" src="https://github.com/user-attachments/assets/917cec53-e6f0-43fb-af4f-15fcf6197bdc" />
+<img width="209" height="781" alt="image" src="https://github.com/user-attachments/assets/107229b7-84db-4e22-8485-0ed083d0f729" />
+
