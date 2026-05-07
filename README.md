@@ -3,6 +3,10 @@
 
 TypoCore là panel CEP giúp tăng tốc quá trình typesetting webtoon với các công cụ đơn giản, dễ dùng và hiệu quả.
 
+
+### 🔹 Yêu Cầu
+- Photoshop từ CC 2018 trở lên
+
 ### 🔹 Quick Layout
 - Xem nhanh nhiều bố cục bóng thoại chỉ với 1 lần load  
 - Hỗ trợ 2 chế độ ngang và dọc tiết kiệm không gian
