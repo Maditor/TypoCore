@@ -36,6 +36,7 @@ TypoCore is designed to work alongside Typer Tool, focusing on layout, spacing, 
 ### 🔹 Tùy chỉnh panel
 - Ẩn / hiện các chức năng không dùng đến
 - Thay đổi Load thoại Tự động - Thủ Công
+- Bật / Tắt Copy Paste FX nhiều lần
 ---
 
 
