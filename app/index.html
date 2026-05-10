@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>TypoCore v1.2</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="panel">
+
+  <div class="section" id="section-layout" data-drag-id="layout">
+    <div class="section-title">Layout Cases</div>
+    <div class="case-grid">
+      <div class="case-row">
+        <button onclick="applyCase(1)">C1</button>
+        <button onclick="applyCase(2)">C2</button>
+        <button onclick="applyCase(3)">C3</button>
+      </div>
+      <div class="case-row">
+        <button onclick="applyCase(4)">C4</button>
+        <button onclick="applyCase(5)">C5</button>
+        <button onclick="applyCase(6)">C6</button>
+      </div>
+      <div class="case-row">
+        <button onclick="applyCase(7)">C7</button>
+        <button onclick="applyCase(8)">C8</button>
+        <button onclick="applyCase(9)">C9</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="section-preview" data-drag-id="preview">
+    <button id="btnPreviewLayout">Quick Layout</button>
+    <div id="previewOverlay">
+      <div id="previewPopup">
+        <div class="preview-header">
+          <button id="btnPreviewLoad">Load</button>
+          <button id="btnPreviewToggle">Horizontal</button>
+          <button id="btnPreviewClose">Close</button>
+        </div>
+        <div class="preview-grid" id="previewGrid"></div>
+	<div class="resize-handle" style="height: 5px; background: #555; cursor: ns-resize; border-radius: 0 0 6px 6px;"></div>
+	<div class="preview-toolbar" id="previewToolbar">
+          <button id="btnPreviewFont">Font</button>
+          <span class="size-group">
+            <button id="btnPreviewSizeDown">−</button>
+            <span id="previewSizeDisplay">14</span>
+            <button id="btnPreviewSizeUp">+</button>
+          </span>
+        </div>
+        <div id="fontPickerPopup">
+          <div class="preview-subpopup-header">
+            <span>Font List</span>
+            <button id="btnFontPickerClose">✕</button>
+          </div>
+          <div class="preview-subpopup-body" id="fontPickerList"></div>
+          <div class="preview-subpopup-footer-add">
+    <input type="text" id="newFontName" placeholder="Font name...">
+    <button id="btnAddFont">[+] Add</button>
+</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="section-split" data-drag-id="split">
+    <div class="section-title">Split Even</div>
+    <div class="split-row">
+      <button onclick="splitEven(2)">2 lines</button>
+      <button onclick="splitEven(3)">3 lines</button>
+      <button onclick="splitEven(4)">4 lines</button>
+    </div>
+  </div>
+
+  <div class="section" id="section-size" data-drag-id="size">
+    <div class="section-title">Font Size / Leading</div>
+    <div class="size-row">
+      <button class="btn-apply" id="btnMinus" onclick="applySize(-1)">−</button>
+      <button class="btn-arrow" onclick="changeStep(-1)">▼</button>
+      <input type="text" id="sizeDisplay" value="3" readonly title="Bước nhảy (1–50)">
+      <button class="btn-arrow" onclick="changeStep(1)">▲</button>
+      <button class="btn-apply" id="btnPlus"  onclick="applySize(1)">+</button>
+    </div>
+  </div>
+
+   <div class="section" id="section-actions" data-drag-id="actions">
+    <div class="section-title">Actions</div>
+    <div class="action-grid">
+      <div class="action-row" id="row-resize-center">
+        <button data-tool="resizeBox" onclick="runBtn('resizeBox()', this)">Resize</button>
+        <button data-tool="center"    onclick="runBtn('alignCenter()', this)">Center</button>
+      </div>
+      <div class="action-row" id="row-group-check">
+        <button data-tool="groupText" onclick="runBtn('groupTextLayers()', this)">Group</button>
+        <button data-tool="checkBG"   onclick="runBtn('toggleCheck()', this)">Check</button>
+      </div>
+      <div class="action-row" id="row-copypaste">
+        <button data-tool="copyFX"  id="btnCopyFX" onclick="doCopyFX()">Copy FX</button>
+        <button data-tool="pasteFX" id="btnPasteFX" onclick="doPasteFX()" disabled>Paste FX</button>
+      </div>
+      <div class="action-row" id="row-select-logo">
+        <button data-tool="selectForm" onclick="runBtn('selectForm()', this)">Select</button>
+        <button data-tool="logo"       id="btnLogo" onclick="runBtn('placeLogo()', this)">Logo</button>
+      </div>
+    </div>  </div>  <div class="panel-footer">
+    <div id="editModeButtons" style="display:none; width:100%; gap: 4px; margin-bottom: 6px;">
+      <button id="addRowBtn" style="flex: 1; height: 28px;">[+] Add Row</button>
+      <button id="saveLayoutBtn" style="flex: 1; height: 28px;">🖫 Save</button>
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+      <span class="footer-credit">TypoCore By Maditor</span>
+      <div class="setting-wrapper">
+        <button class="setting-btn" id="settingBtn">Setting</button>
+        <div class="setting-popup" id="settingPopup">
+
+        <div class="setting-item" data-action="chooseLogo">🗁 Choose Logo</div>
+        <div class="setting-item" data-action="pasteAllOpened">⎘ Paste Logo to All Opened</div>
+        
+<div class="setting-separator"></div>
+        <div class="setting-item" data-toggle="multiplePaste">
+          <input type="checkbox" id="toggle_multiplePaste"> Multiple Paste FX
+        </div>
+        <div class="setting-separator"></div>
+        <div class="setting-item" data-toggle="manualLoadText">
+          <input type="checkbox" id="toggle_manualLoadText"> Manual Load Text
+        </div>
+<div class="setting-separator"></div>
+<div class="setting-item" id="layoutManagerToggle" style="cursor: pointer; justify-content: space-between;">
+    <span>⊟ Panel Manager</span>
+    <span id="layoutManagerArrow" style="font-size: 10px;">▼</span>
+</div>
+<div id="layoutManagerSub" style="display: none;">
+    <div class="setting-item" data-action="toggleEditMode" style="padding-left:24px;">✎ Panel Setup</div>
+    <div class="setting-item" data-action="resetLayout" style="padding-left:24px;">⟳ Reset Panel</div>
+</div>
+        <div class="setting-separator"></div>
+        <div class="setting-item" id="toolManagerToggle" style="cursor: pointer; justify-content: space-between;">
+          <span>⚙️ Hide/Unhide Tool</span>
+          <span id="toolManagerArrow" style="font-size: 10px;">▼</span>
+        </div>
+        <div id="toolManagerSub" style="display: none;">
+          <div class="setting-item" data-toggle="layoutCases">
+            <input type="checkbox" id="toggle_layoutCases"> Layout Cases
+          </div>
+          <div class="setting-item" data-toggle="splitEven">
+            <input type="checkbox" id="toggle_splitEven"> Split Even
+          </div>
+          <div class="setting-item" data-toggle="fontSize">
+            <input type="checkbox" id="toggle_fontSize"> Font Size / Leading
+          </div>
+	  <div class="setting-item" data-toggle="actionsSection">
+    <input type="checkbox" id="toggle_actionsSection"> Actions
+</div>
+          <div class="setting-item" data-toggle="resizeBox">
+            <input type="checkbox" id="toggle_resizeBox"> Resize Box
+          </div>
+          <div class="setting-item" data-toggle="center">
+            <input type="checkbox" id="toggle_center"> Center
+          </div>
+          <div class="setting-item" data-toggle="groupText">
+            <input type="checkbox" id="toggle_groupText"> Group TEXT
+          </div>
+          <div class="setting-item" data-toggle="checkBG">
+            <input type="checkbox" id="toggle_checkBG"> Check BG
+          </div>
+          <div class="setting-item" data-toggle="copyFX">
+            <input type="checkbox" id="toggle_copyFX"> Copy FX
+          </div>
+          <div class="setting-item" data-toggle="pasteFX">
+            <input type="checkbox" id="toggle_pasteFX"> Paste FX
+          </div>
+          <div class="setting-item" data-toggle="selectForm">
+            <input type="checkbox" id="toggle_selectForm"> SelectForm
+          </div>
+          <div class="setting-item" data-toggle="logo">
+            <input type="checkbox" id="toggle_logo"> Logo
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="../lib/CSInterface.js"></script>
+<script src="../lib/Sortable.min.js"></script>
+<script src="scripts.js"></script>
+</body>
+</html>

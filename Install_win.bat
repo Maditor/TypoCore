@@ -1,6 +1,6 @@
 @echo off
 echo ========================================
-echo   TypoCore Panel V1.1 - Installer
+echo   TypoCore Panel V1.2 - Installer
 echo ========================================
 echo.
 echo Close Photoshop (if it is open).
@@ -29,13 +29,11 @@ md "%TARGET_DIR%"
 echo Installing core files...
 
 REM Copy các file gốc
-copy /Y index.html "%TARGET_DIR%\"
-copy /Y CSInterface.js "%TARGET_DIR%\"
-if exist previewWindow.html copy /Y previewWindow.html "%TARGET_DIR%\"
 if exist .debug copy /Y .debug "%TARGET_DIR%\"
 
 REM Copy các thư mục con
-if exist jsx xcopy jsx "%TARGET_DIR%\jsx\" /E /Y /I
+if exist app xcopy app "%TARGET_DIR%\app\" /E /Y /I
+if exist lib xcopy lib "%TARGET_DIR%\lib\" /E /Y /I
 if exist CSXS xcopy CSXS "%TARGET_DIR%\CSXS\" /E /Y /I
 if exist icons xcopy icons "%TARGET_DIR%\icons\" /E /Y /I
 

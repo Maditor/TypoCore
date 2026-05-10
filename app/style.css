@@ -1,0 +1,585 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+    background: #2b2b2b;
+    color: #ccc;
+    padding: 8px;
+    user-select: none;
+    overflow-y: auto;
+  }
+  .panel { display: flex; flex-direction: column; gap: 6px; min-height: 100%; overflow: visible; }
+
+  .section {
+    border: 1px solid #444;
+    border-radius: 3px;
+    padding: 6px;
+  }
+  .section-title {
+    font-size: 10px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+  }
+
+  /* ── Edit Mode ── */
+  .edit-mode .section {
+    border-color: #f90 !important;
+    cursor: grab;
+  }
+  .edit-mode .section:active { cursor: grabbing; }
+
+  .drag-handle {
+    display: none;
+    float: right;
+    color: #f90;
+    font-size: 10px;
+    cursor: grab;
+    padding: 0 2px;
+    user-select: none;
+  }
+  .edit-mode .drag-handle { display: inline; }
+
+  /* Nút đang được kéo */
+  .dragging {
+    opacity: 0.4;
+    border: 1px dashed #f90 !important;
+  }
+
+  /* Vị trí drop target */
+  .drag-over {
+    border-color: #ff0 !important;
+    background: #3a3500 !important;
+  }
+
+  /* Nút action trong edit mode */
+  .edit-mode [data-tool] {
+    border-color: #f90 !important;
+    cursor: grab !important;
+  }
+
+  button {
+    background: #3c3c3c;
+    color: #ccc;
+    border: 1px solid #555;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 11px;
+    font-family: Arial, sans-serif;
+    transition: background 0.1s;
+  }
+  button:hover  { background: #4a4a4a; }
+  button:active { background: #222; }
+  button:disabled { opacity: 0.4; cursor: default; }
+
+  .case-grid { display: flex; flex-direction: column; gap: 4px; }
+  .case-row  { display: flex; gap: 4px; }
+  .case-row button { flex: 1; height: 26px; }
+
+  .split-row { display: flex; gap: 4px; }
+  .split-row button { flex: 1; height: 26px; }
+
+  .size-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  .size-row button { height: 26px; }
+  .btn-apply { width: 48px; }
+  .btn-arrow { width: 26px; }
+  #sizeDisplay {
+    width: 30px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: bold;
+    color: #eee;
+    background: #222;
+    border: 1px solid #555;
+    border-radius: 3px;
+    height: 26px;
+    line-height: 26px;
+    padding: 0;
+    outline: none;
+  }
+  #sizeDisplay:focus {
+    border-color: #888;
+  }
+
+  .action-grid { display: flex; flex-direction: column; gap: 4px; }
+  .action-row  { display: flex; gap: 4px; min-height: 36px; transition: all 0.1s; }
+  .action-row button { flex: 1; height: 36px; font-size: 11px; }
+  .edit-mode .action-row:empty {
+    border: 1px dashed #888;
+    background: #2a2a2a;
+    border-radius: 3px;
+}
+    /* Hàng trống khi ở chế độ edit */
+.edit-mode .action-row:empty {
+    border: 1px dashed #f90;
+    background: #2a2a2a;
+    border-radius: 3px;
+    margin-bottom: 4px;
+    position: relative;
+}
+
+/* Thêm chữ hướng dẫn bên trong hàng trống */
+.edit-mode .action-row:empty::before {
+    content: "Drag buttons here,  \A Click to remove.";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 8px;
+    color: #aaa;
+    white-space: pre-line; /* hoặc pre */
+    pointer-events: none;
+    text-align: center;
+    line-height: 1.4;
+}
+
+
+  button.flash-ok   { background: #2a5a2a !important; color: #7f7 !important; }
+  button.flash-err  { background: #5a2a2a !important; color: #f77 !important; }
+
+  .panel-footer {
+    margin-top: auto;
+    padding-top: 6px;
+    border-top: 1px solid #444;
+    display: flex;
+    flex-direction: column;  /* sắp xếp theo cột */
+    gap: 6px;
+}
+
+  /* Dropdown container */
+  .setting-wrapper {
+    position: relative;
+    display: inline-block;
+  }
+
+  .setting-btn {
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 11px;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 2px 0;
+    font-family: Arial, sans-serif;
+  }
+  .setting-btn:hover {
+    color: #fff;
+  }
+
+  /* Popup menu (ẩn mặc định, nổi từ dưới lên) */
+  .setting-popup {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    margin-bottom: 4px;
+    background: #383838;
+    border: 1px solid #555;
+    border-radius: 4px;
+    z-index: 2000;
+    min-width: 180px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    padding: 4px 0;
+    max-height: 350px;     
+    overflow-y: auto;
+  }
+  .setting-popup.show {
+    display: block;
+  }
+
+  .setting-item {
+    display: flex;
+    align-items: center;
+    padding: 5px 12px;
+    cursor: pointer;
+    font-size: 11px;
+    color: #ddd;
+    white-space: nowrap;
+  }
+  .setting-item:hover {
+    background: #4a4a4a;
+  }
+  .setting-item input[type="checkbox"] {
+    margin-right: 8px;
+  }
+  .setting-separator {
+    border-top: 1px solid #555;
+    margin: 4px 0;
+  }
+
+  /* --- Preview Popup Overlay --- */
+  #previewOverlay {
+    display: none;
+    position: relative;
+    z-index: 1000;
+    margin-top: 4px;
+    pointer-events: none;
+  }
+  #previewPopup {
+    position: relative;
+    width: 100%;
+    max-height: 1080px;
+    background: #2b2b2b;
+    border: 1px solid #555;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+    pointer-events: auto;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.6);
+  }
+  .preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    background: #3a3a3a;
+    border-bottom: 1px solid #555;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    flex-shrink: 0;
+  }
+  .preview-header button {
+    background: #4a4a4a;
+    border: 1px solid #666;
+    color: #ddd;
+    padding: 4px 12px;
+    font-size: 11px;
+    border-radius: 3px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .preview-header button:hover {
+    background: #5a5a5a;
+  }
+  .preview-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .preview-item {
+    background: #383838;
+    border: 1px solid #4a4a4a;
+    border-radius: 4px;
+    padding: 5px;
+    text-align: center;
+    font-size: 8px;
+    color: #ddd;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    white-space: pre-wrap;
+    word-wrap: break-word;     
+    width: max-content;     
+    min-width: 100%;         
+  }
+  .preview-item:hover {
+    background: #4a4a4a;
+    border-color: #888;
+  }
+  #btnPreviewLayout {
+    height: 36px;
+    width: 100%;
+  }
+
+  /* Chế độ ngang */
+.preview-grid.horizontal {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    margin-bottom: 8px;  /* tạo khoảng cách với thanh kéo bên dưới */
+}
+  .preview-grid.horizontal .preview-item {
+    flex: 0 0 auto;
+    min-width: 150px;
+    width: max-content;
+    white-space: nowrap;
+  }
+
+  .footer-credit {
+    font-size: 9px;
+    color: #555;
+    user-select: none;
+    pointer-events: none;
+  }
+
+  /* Tùy chỉnh thanh cuộn cho vùng preview và setting */
+  .preview-grid::-webkit-scrollbar,
+  .setting-popup::-webkit-scrollbar,
+  .preview-subpopup-body::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+    background: #1a1a1a;
+  }
+  .preview-grid::-webkit-scrollbar-track,
+  .setting-popup::-webkit-scrollbar-track,
+  .preview-subpopup-body::-webkit-scrollbar-track {
+    background: #2b2b2b;
+  }
+  .preview-grid::-webkit-scrollbar-thumb,
+  .setting-popup::-webkit-scrollbar-thumb,
+  .preview-subpopup-body::-webkit-scrollbar-thumb {
+    background: #777;
+    border-radius: 2px;
+  }
+  .preview-grid::-webkit-scrollbar-thumb:hover,
+  .setting-popup::-webkit-scrollbar-thumb:hover,
+  .preview-subpopup-body::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+
+  /* Toolbar Font/Size */
+  .preview-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 6px;
+    background: #2b2b2b;
+    border-top: 1px solid #555;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .preview-toolbar button {
+    height: 22px;
+    font-size: 10px;
+    padding: 0 6px;
+    background: #3c3c3c;
+    border: 1px solid #555;
+    color: #ccc;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .preview-toolbar button:hover { background: #4a4a4a; }
+  #previewSizeDisplay {
+    font-size: 11px;
+    font-weight: bold;
+    color: #eee;
+    min-width: 24px;
+    text-align: center;
+    background: #222;
+    border: 1px solid #555;
+    border-radius: 3px;
+    padding: 1px 4px;
+    line-height: 1.4;
+  }
+  .size-group {
+    display: flex;
+    align-items: center;
+  }
+  .size-group > * { margin: 0; border-radius: 0; }
+  .size-group > button:first-child { border-radius: 3px 0 0 3px; }
+  .size-group > button:last-child { border-radius: 0 3px 3px 0; }
+  #previewSizeDisplay { border-left: none; border-right: none; }
+
+  /* Popup font */
+  #fontPickerPopup {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    z-index: 200 !important;
+    background: #383838;
+    border: 1px solid #555;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    max-height: 260px;
+    display: none;
+    flex-direction: column;
+  }
+  .preview-subpopup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    background: #3a3a3a;
+    border-bottom: 1px solid #555;
+    font-weight: bold;
+    font-size: 12px;
+    color: #eee;
+    flex-shrink: 0;
+  }
+  .preview-subpopup-header button {
+    background: none; border: none; color: #ddd; cursor: pointer; font-size: 14px; padding: 0 4px;
+  }
+  .preview-subpopup-body { overflow-y: auto; flex: 1; padding: 4px; }
+  .preview-subpopup-footer { border-top: 1px solid #555; padding: 6px; flex-shrink: 0; }
+  .preview-subpopup-footer button { width: 100%; height: 26px; font-size: 11px; }
+  .font-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 10px; cursor: pointer; border-radius: 3px; font-size: 11px;
+  }
+  .font-item:hover { background: #4a4a4a; }
+  .font-item.selected { background: #288edf; color: #fff; }
+  .font-item .font-index { font-weight: bold; margin-right: 8px; }
+  .font-item .font-remove { color: #f77; cursor: pointer; padding: 2px 6px; font-size: 14px; }
+
+  button:active {
+    background: #1a1a1a;
+    transform: scale(0.97);
+    transition: none;
+  }
+  button:focus { outline: none; }
+  button:focus-visible { outline: none; }
+
+  body::-webkit-scrollbar,
+  .panel::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+    background: #1a1a1a;
+  }
+  body::-webkit-scrollbar-track,
+  .panel::-webkit-scrollbar-track {
+    background: #2b2b2b;
+  }
+  body::-webkit-scrollbar-thumb,
+  .panel::-webkit-scrollbar-thumb {
+    background: #999;
+    border-radius: 2px;
+  }
+  body::-webkit-scrollbar-thumb:hover,
+  .panel::-webkit-scrollbar-thumb:hover {
+    background: #bbb;
+  }
+   .sortable-fallback {
+    opacity: 0.6;
+    border: 1px dashed #f90;
+    background: #3a3500;
+}
+
+
+#saveLayoutBtn {
+    background: #2a5a2a;
+    border-color: #6a6;
+}
+#saveLayoutBtn:hover {
+    background: #3a7a3a;
+}
+
+.draggable-only {
+    pointer-events: none;
+    opacity: 0.7;
+}
+.edit-mode [data-tool] {
+    cursor: grab !important;
+}
+
+.resize-handle {
+    background: #777;
+    transition: background 0.1s;
+}
+.resize-handle:hover {
+    background: #f90;
+}
+ 
+body.edit-mode.actions-hidden #addRowBtn {
+    pointer-events: none;
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Font item layout */
+.font-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 11px;
+}
+.font-item:hover { background: #4a4a4a; }
+.font-item.selected { background: #288edf; color: #fff; }
+
+.font-item .font-index {
+    font-weight: bold;
+    margin-right: 8px;
+    flex-shrink: 0;
+    cursor: pointer;
+    background: #2a2a2a;     /* Nền tối nhẹ phía sau */
+    border-radius: 3px;
+    padding: 1px 6px;
+    min-width: 24px;
+    text-align: center;
+}
+
+.font-item .font-name {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 8px;
+    cursor: pointer;
+}
+
+.font-item .font-remove {
+    color: #f77;
+    cursor: pointer;
+    padding: 2px 6px;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.font-item .font-name input {
+    width: 100%;
+    background: #222;
+    border: 1px solid #555;
+    color: #eee;
+    font-size: 11px;
+    padding: 2px 4px;
+    border-radius: 2px;
+    outline: none;
+    box-sizing: border-box;
+}
+
+
+/* Footer chứa input thêm font mới */
+.preview-subpopup-footer-add {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px;
+    border-top: 1px solid #555;
+    flex-shrink: 0;
+    align-items: stretch;  /* cho input full width */
+}
+
+.preview-subpopup-footer-add input {
+    height: 24px;
+    background: #222;
+    border: 1px solid #555;
+    color: #eee;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    outline: none;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.preview-subpopup-footer-add input:focus {
+    border-color: #888;
+}
+
+.preview-subpopup-footer-add button {
+    height: 24px;
+    font-size: 11px;
+    padding: 0 12px;
+    background: #3c3c3c;
+    border: 1px solid #555;
+    color: #ccc;
+    border-radius: 3px;
+    cursor: pointer;
+    white-space: nowrap;
+    align-self: center;    /* căn giữa theo chiều ngang */
+    min-width: 60px;
+}
