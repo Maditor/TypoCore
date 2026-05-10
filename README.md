@@ -2,7 +2,7 @@
 ### ✨UPDATE TYPOCORE V1.2
 1. Thêm chức năng điều chỉnh độ dài khung của QuickLayout
 2. Thêm chức năng nhập font vào QuickLayout
-3. Thêm chức năng điều chỉnh kích cở chữ QuickLayout
+3. Thêm chức năng điều chỉnh kích cỡ chữ QuickLayout
 4. Thêm chức năng di chuyển công cụ trong Setting -> Panel Manager -> Panel Setup
 5. Thêm chức năng di chuyển các công cụ về vị trí mặc định Setting -> Panel Manager -> Reset Panel
 6. Sửa lỗi nút của các công cụ bị mất màu trong quá trình sử dụng
