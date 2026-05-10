@@ -8,7 +8,18 @@ This project was built with the assistance of AI tools.
 TypoCore is designed to work alongside Typer Tool, focusing on layout, spacing, and visual refinement to complete the typesetting workflow.
 
 ---
+### 🔹 UPDATE TYPOCORE V1.2
+1. Thêm chức năng điều chỉnh độ dài khung của QuickLayout
+2. Thêm chức năng nhập font vào QuickLayout
+3. Thêm chức năng điều chỉnh kích cở chữ QuickLayout
+4. Thêm chức năng di chuyển công cụ trong Setting -> Panel Manager -> Panel Setup
+5. Thêm chức năng di chuyển các công cụ về vị trí mặc định Setting -> Panel Manager -> Reset Panel
+6. Sửa lỗi nút của các công cụ bị mất màu trong quá trình sử dụng
 
+*Lưu ý khi nhập font cần nhập chính xác tên font. Ví dụ: "000 AnimeAce3 [TeddyBear]"
+
+- Dự Kiến Bản Cập Nhật V1.3: Mở rộng dữ liệu Quick Layout để áp dụng được cho nhiều trường hợp hơn.
+---
 ### 🔹 Hướng Dẫn Cài Đặt
 
 - Tải và giải nén file .zip  
