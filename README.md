@@ -1,14 +1,5 @@
 
-## ✨ Tính năng của TypoCore
-
-TypoCore By Maditor
-
-This project was built with the assistance of AI tools.
-
-TypoCore is designed to work alongside Typer Tool, focusing on layout, spacing, and visual refinement to complete the typesetting workflow.
-
----
-### 🔹 UPDATE TYPOCORE V1.2
+### ✨UPDATE TYPOCORE V1.2
 1. Thêm chức năng điều chỉnh độ dài khung của QuickLayout
 2. Thêm chức năng nhập font vào QuickLayout
 3. Thêm chức năng điều chỉnh kích cở chữ QuickLayout
@@ -42,6 +33,10 @@ https://drive.google.com/drive/folders/1giaDXBR-Qn6iGMxBwE5yD-6j3jMYjIJo?usp=dri
 - Photoshop từ CC 2018 trở lên
 - Sử dụng cùng với Typer Tool để đạt hiệu suất cao hơn
 
+---
+## ✨ Tính năng của TypoCore
+
+
 ### 🔹 Quick Layout
 - Xem nhanh nhiều bố cục bóng thoại chỉ với 1 lần load  
 - Hỗ trợ 2 chế độ ngang và dọc tiết kiệm không gian
@@ -68,7 +63,12 @@ https://drive.google.com/drive/folders/1giaDXBR-Qn6iGMxBwE5yD-6j3jMYjIJo?usp=dri
 - Ẩn / hiện các chức năng không dùng đến
 - Thay đổi Load thoại Tự động - Thủ Công
 - Bật / Tắt Copy Paste FX nhiều lần
+---
+TypoCore By Maditor
 
+This project was built with the assistance of AI tools.
+
+TypoCore is designed to work alongside Typer Tool, focusing on layout, spacing, and visual refinement to complete the typesetting workflow.
 
 
 ---
