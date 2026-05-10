@@ -72,9 +72,10 @@ TypoCore is designed to work alongside Typer Tool, focusing on layout, spacing, 
 
 
 ---
-<img width="205" height="762" alt="Untitled-2" src="https://github.com/user-attachments/assets/917cec53-e6f0-43fb-af4f-15fcf6197bdc" />
----
-<img width="209" height="781" alt="image" src="https://github.com/user-attachments/assets/107229b7-84db-4e22-8485-0ed083d0f729" />
+
+<img width="226" height="1002" alt="Untitled-3" src="https://github.com/user-attachments/assets/563014ea-669e-40fb-861d-356fa19f79a3" />
+
+<img width="210" height="801" alt="Untitled-4" src="https://github.com/user-attachments/assets/15ed2a67-18d1-49ab-ba50-6ed722badb4d" />
 
 
 
