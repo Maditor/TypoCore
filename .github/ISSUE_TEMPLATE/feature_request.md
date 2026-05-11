@@ -4,6 +4,7 @@ about: Đề xuất tính năng mới cho TypoCore
 title: "[FEATURE] "
 labels: enhancement
 ---
+✨ Ý tưởng hay sẽ được cân nhắc trong các bản cập nhật tiếp theo.
 
 ## 🚀 Mô tả tính năng
 Bạn muốn thêm tính năng gì?
