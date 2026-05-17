@@ -33,20 +33,34 @@
     <button id="btnPreviewLayout">Quick Layout</button>
     <div id="previewOverlay">
       <div id="previewPopup">
-        <div class="preview-header">
+	<div class="preview-header">
           <button id="btnPreviewLoad">Load</button>
           <button id="btnPreviewToggle">Horizontal</button>
-          <button id="btnPreviewClose">Close</button>
+          <button id="btnPreviewMode" title="Đổi chế độ toolbar">⇆</button>
         </div>
         <div class="preview-grid" id="previewGrid"></div>
 	<div class="resize-handle" style="height: 5px; background: #555; cursor: ns-resize; border-radius: 0 0 6px 6px;"></div>
-	<div class="preview-toolbar" id="previewToolbar">
-          <button id="btnPreviewFont">Font</button>
-          <span class="size-group">
-            <button id="btnPreviewSizeDown">−</button>
-            <span id="previewSizeDisplay">14</span>
-            <button id="btnPreviewSizeUp">+</button>
+<div class="preview-toolbar" id="previewToolbar">
+          <!-- Legacy giữ lại để JS cũ không crash, ẩn đi -->
+          <button id="btnPreviewFont" style="display:none"></button>
+          <span class="size-group" style="display:none">
+            <button id="btnPreviewSizeDown"></button>
+            <span id="previewSizeDisplay"></span>
+            <button id="btnPreviewSizeUp"></button>
           </span>
+          <!-- Toolbar mới -->
+          <button id="btnPrvLeft" class="prv-left-btn">Font</button>
+          <div class="prv-ctrl-group">
+            <button class="prv-apply-btn" id="btnPrvMinus">−</button>
+          <div class="prv-spinbox" id="sizeControl">
+  <input type="number" id="prvNumInput" value="14" min="1" max="999">
+  <div class="prv-spinbox-btns">
+    <button id="btnPrvSpinUp">▴</button>
+    <button id="btnPrvSpinDn">▾</button>
+  </div>
+</div>
+            <button class="prv-apply-btn" id="btnPrvPlus">+</button>
+          </div>
         </div>
         <div id="fontPickerPopup">
           <div class="preview-subpopup-header">
@@ -63,46 +77,155 @@
     </div>
   </div>
 
-  <div class="section" id="section-split" data-drag-id="split">
-    <div class="section-title">Split Even</div>
-    <div class="split-row">
-      <button onclick="splitEven(2)">2 lines</button>
-      <button onclick="splitEven(3)">3 lines</button>
-      <button onclick="splitEven(4)">4 lines</button>
+<div class="section" id="section-fx" data-drag-id="fx">
+  <button id="btnOpenFX" style="width:100%; height:36px;">FX Manager</button>
+  <div id="fxOverlay" style="display:none; position:relative; margin-top:4px;">
+    <div id="fxPopup">
+      <div class="fx-header">
+        <button id="btnFxSync">Sync</button>
+        <div id="fxSpinner" style="display: none; width: 16px; height: 16px; border: 2px solid #aaa; border-top-color: #f90; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 4px;"></div>
+        <button id="btnFxClose">Close</button>
+      </div>
+
+      <div class="fx-scroll">
+        <!-- Gradient -->
+        <div class="fx-section">
+          <div class="fx-section-header">
+            <label><input type="checkbox" class="fx-enable" data-fx="gradientFill"> Gradient</label>
+            <div class="fx-swatches">
+              <button class="quick-fgbg" title="Lấy FG cho màu 1, BG cho màu 2">🌢</button>
+              <div class="color-swatch" id="gradientColor1" title="Color 1"></div>
+              <div class="color-swatch" id="gradientColor2" title="Color 2"></div>
+            </div>
+          </div>
+          <div class="fx-section-body">
+            <div class="fx-angle-row">
+              <canvas id="gradientAngleCanvas" width="20" height="20"></canvas>
+              <span class="fx-angle-label">Angle</span>
+              <input type="number" id="gradientAngleInput" min="-180" max="180" value="0" step="1">
+            </div>
+          </div>
+        </div>
+
+        <!-- Stroke -->
+        <div class="fx-section">
+          <div class="fx-section-header">
+            <label><input type="checkbox" class="fx-enable" data-fx="frameFX"> Stroke</label>
+            <div class="fx-swatches">
+              <div class="color-swatch" id="strokeColor1" title="Stroke 1"></div>
+            </div>
+          </div>
+          <div class="fx-section-body">
+            <div class="fx-row">
+              <span class="fx-row-label">Size</span>
+              <input type="range" id="strokeSize1" min="0" max="20" value="1">
+              <input type="number" class="fx-row-val" id="strokeSize1Val" value="1" min="0" max="50" step="1">
+            </div>
+          </div>
+        </div>
+
+        <!-- Outer Glow -->
+        <div class="fx-section">
+          <div class="fx-section-header">
+            <label><input type="checkbox" class="fx-enable" data-fx="outerGlow"> Outer Glow</label>
+            <div class="fx-swatches">
+              <div class="color-swatch" id="glowColor" title="Glow Color"></div>
+            </div>
+          </div>
+          <div class="fx-section-body">
+            <div class="fx-row">
+              <span class="fx-row-label">Opacity</span>
+              <input type="range" id="glowOpacity" min="1" max="100" value="100">
+              <input type="number" class="fx-row-val" id="glowOpacityVal" value="100" min="1" max="100" step="1">
+            </div>
+            <div class="fx-row">
+              <span class="fx-row-label">Size</span>
+              <input type="range" id="glowSize" min="1" max="50" value="10">
+              <input type="number" class="fx-row-val" id="glowSizeVal" value="10" min="1" max="30" step="1">
+            </div>
+            <div class="fx-row">
+              <span class="fx-row-label">Spread</span>
+              <input type="range" id="glowSpread" min="1" max="100" value="15">
+              <input type="number" class="fx-row-val" id="glowSpreadVal" value="15" min="1" max="100" step="1">
+            </div>
+          </div>
+        </div>
+
+        <!-- Text Color -->
+        <div class="fx-section" id="fxTextColorSection">
+          <div class="fx-section-header">
+            <label><input type="checkbox" class="fx-enable" id="enableTextColor" data-fx="textColor"> Text Color</label>
+            <div class="fx-swatches">
+              <div class="color-swatch" id="textColorSwatch" title="Text Color"></div>
+            </div>
+          </div>
+          <div class="fx-section-body">
+            <div class="fx-row">
+              <span class="fx-row-label">Fill</span>
+              <input type="range" id="textColorFill" min="0" max="100" value="100">
+              <input type="number" class="fx-row-val" id="textColorFillVal" value="100" min="0" max="100" step="1">
+            </div>
+          </div>
+        </div>
+      </div><!-- /fx-scroll -->
+
+      <div class="fx-resize-handle"></div>
+
+<div class="fx-toolbar">
+  <button id="btnFxToggleMode">Less</button>
+  <button id="btnFxApply">Apply</button>
+</div>
+    </div><!-- /fxPopup -->
+  </div><!-- /fxOverlay -->
+</div><!-- /section-fx -->
+
+<div class="section" id="section-split" data-drag-id="split">
+  <div class="section-title">Split Even</div>
+  <div class="split-row">
+    <button onclick="splitEven(2)">2 lines</button>
+    <button onclick="splitEven(3)">3 lines</button>
+    <button onclick="splitEven(4)">4 lines</button>
+  </div>
+</div>
+
+<div class="section" id="section-size" data-drag-id="size">
+  <div class="section-title">Font Size / Leading</div>
+  <div class="size-row">
+    <button class="btn-apply" id="btnMinus" onclick="applySize(-1)">−</button>
+    <button class="btn-arrow" onclick="changeStep(-1)">▼</button>
+    <input type="text" id="sizeDisplay" value="3" readonly title="Bước nhảy (1–50)">
+    <button class="btn-arrow" onclick="changeStep(1)">▲</button>
+    <button class="btn-apply" id="btnPlus"  onclick="applySize(1)">+</button>
+  </div>
+</div>
+
+<div class="section" id="section-actions" data-drag-id="actions">
+  <div class="section-title">Actions</div>
+  <div class="action-grid">
+    <!-- hàng 1 -->
+    <div class="action-row" id="row-resize-center">
+      <button data-tool="resizeBox" onclick="runBtn('resizeBox()', this)">Resize</button>
+      <button data-tool="center"    onclick="runBtn('alignCenter()', this)">Center</button>
+    </div>
+    <!-- hàng 2 -->
+    <div class="action-row" id="row-group-check">
+      <button data-tool="groupText" onclick="runBtn('groupTextLayers()', this)">Group</button>
+      <button data-tool="checkBG"   onclick="runBtn('toggleCheck()', this)">Check</button>
+    </div>
+    <!-- hàng 3 -->
+    <div class="action-row" id="row-copypaste">
+      <button data-tool="copyFX"  id="btnCopyFX" onclick="doCopyFX()">Copy FX</button>
+      <button data-tool="pasteFX" id="btnPasteFX" onclick="doPasteFX()" disabled>Paste FX</button>
+    </div>
+    <!-- hàng 4 -->
+    <div class="action-row" id="row-select-logo">
+      <button data-tool="selectForm" onclick="runBtn('selectForm()', this)">Select</button>
+      <button data-tool="logo"       id="btnLogo" onclick="runBtn('placeLogo()', this)">Logo</button>
     </div>
   </div>
+</div>
 
-  <div class="section" id="section-size" data-drag-id="size">
-    <div class="section-title">Font Size / Leading</div>
-    <div class="size-row">
-      <button class="btn-apply" id="btnMinus" onclick="applySize(-1)">−</button>
-      <button class="btn-arrow" onclick="changeStep(-1)">▼</button>
-      <input type="text" id="sizeDisplay" value="3" readonly title="Bước nhảy (1–50)">
-      <button class="btn-arrow" onclick="changeStep(1)">▲</button>
-      <button class="btn-apply" id="btnPlus"  onclick="applySize(1)">+</button>
-    </div>
-  </div>
-
-   <div class="section" id="section-actions" data-drag-id="actions">
-    <div class="section-title">Actions</div>
-    <div class="action-grid">
-      <div class="action-row" id="row-resize-center">
-        <button data-tool="resizeBox" onclick="runBtn('resizeBox()', this)">Resize</button>
-        <button data-tool="center"    onclick="runBtn('alignCenter()', this)">Center</button>
-      </div>
-      <div class="action-row" id="row-group-check">
-        <button data-tool="groupText" onclick="runBtn('groupTextLayers()', this)">Group</button>
-        <button data-tool="checkBG"   onclick="runBtn('toggleCheck()', this)">Check</button>
-      </div>
-      <div class="action-row" id="row-copypaste">
-        <button data-tool="copyFX"  id="btnCopyFX" onclick="doCopyFX()">Copy FX</button>
-        <button data-tool="pasteFX" id="btnPasteFX" onclick="doPasteFX()" disabled>Paste FX</button>
-      </div>
-      <div class="action-row" id="row-select-logo">
-        <button data-tool="selectForm" onclick="runBtn('selectForm()', this)">Select</button>
-        <button data-tool="logo"       id="btnLogo" onclick="runBtn('placeLogo()', this)">Logo</button>
-      </div>
-    </div>  </div>  <div class="panel-footer">
+ <div class="panel-footer">
     <div id="editModeButtons" style="display:none; width:100%; gap: 4px; margin-bottom: 6px;">
       <button id="addRowBtn" style="flex: 1; height: 28px;">[+] Add Row</button>
       <button id="saveLayoutBtn" style="flex: 1; height: 28px;">🖫 Save</button>
@@ -139,13 +262,20 @@
           <span id="toolManagerArrow" style="font-size: 10px;">▼</span>
         </div>
         <div id="toolManagerSub" style="display: none;">
-          <div class="setting-item" data-toggle="layoutCases">
-            <input type="checkbox" id="toggle_layoutCases"> Layout Cases
-          </div>
-          <div class="setting-item" data-toggle="splitEven">
-            <input type="checkbox" id="toggle_splitEven"> Split Even
-          </div>
-          <div class="setting-item" data-toggle="fontSize">
+  <div class="setting-item" data-toggle="layoutCases">
+    <input type="checkbox" id="toggle_layoutCases"> Layout Cases
+  </div>
+  <div class="setting-item" data-toggle="splitEven">
+    <input type="checkbox" id="toggle_splitEven"> Split Even
+  </div>
+  <!-- THÊM HAI DÒNG MỚI -->
+  <div class="setting-item" data-toggle="quickLayout">
+    <input type="checkbox" id="toggle_quickLayout"> Quick Layout
+  </div>
+  <div class="setting-item" data-toggle="fxManager">
+    <input type="checkbox" id="toggle_fxManager"> FX Manager
+  </div>
+  <div class="setting-item" data-toggle="fontSize">
             <input type="checkbox" id="toggle_fontSize"> Font Size / Leading
           </div>
 	  <div class="setting-item" data-toggle="actionsSection">
@@ -180,6 +310,17 @@
     </div>
   </div>
 
+</div>
+
+<div id="colorPickerPopup" style="display: none;">
+  <div class="color-presets">
+    <div class="recent-colors"></div>
+    <div class="color-grid" id="colorGrid"></div>
+    <div class="buttons-row">
+      <button class="fg-color">FG</button>
+      <button class="bg-color">BG</button>
+    </div>
+  </div>
 </div>
 
 <script src="../lib/CSInterface.js"></script>

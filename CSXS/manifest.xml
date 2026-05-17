@@ -10,28 +10,26 @@
     <Extension Id="com.typocore.panel" Version="1.2"/>
   </ExtensionList>
 
-  <ExecutionEnvironment>
+ <ExecutionEnvironment>
     <HostList>
-      <!-- PHXS = Photoshop, version 19 = CC 2018, 25 = PS 2024 -->
-      <Host Name="PHXS" Version="[19.0,99.9]"/>
-      <Host Name="PHSP" Version="[19.0,99.9]"/>
+      <Host Name="PHXS" Version="[16.0,99.9]"/>
+      <Host Name="PHSP" Version="[16.0,99.9]"/>
     </HostList>
     <LocaleList>
       <Locale Code="All"/>
     </LocaleList>
     <RequiredRuntimeList>
-      <!-- CSXS 8.0 cho CC 2018+, tương thích ngược lên các version mới hơn -->
-      <RequiredRuntime Name="CSXS" Version="8.0"/>
+      <RequiredRuntime Name="CSXS" Version="6.0"/>
     </RequiredRuntimeList>
   </ExecutionEnvironment>
+
 
   <DispatchInfoList>
     <Extension Id="com.typocore.panel">
       <DispatchInfo>
         <Resources>
           <MainPath>./app/index.html</MainPath>
-          <ScriptPath>./app/host.jsx</ScriptPath>
-          <CEFCommandLine>
+                    <CEFCommandLine>
             <Parameter>--allow-file-access</Parameter>
             <Parameter>--allow-file-access-from-files</Parameter>
           </CEFCommandLine>
