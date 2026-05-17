@@ -8,7 +8,10 @@
 - Panel vẫn còn nhiều thiếu sót và đang trong thời gian nâng cấp, phát triển.
 - TypoCore sẽ không được thương mại dưới mọi hình thức
 - Cảm ơn mọi người đã quan tâm
-
+- Dự Kiến Cập Nhật V1.4:
++ Điều chỉnh dữ liệu Quick layout để áp dụng cho nhiều trường hợp hơn.
++ Thêm chức năng bên trong FX Studio để đa dạng hiệu ứng hơn.
++ Tích hợp chức năng của cụm Actions vào những chức năng khác để tiện sử dụng và không chiếm không gian.
 ### ✨UPDATE TYPOCORE V1.2
 1. Thêm chức năng điều chỉnh độ dài khung của QuickLayout
 2. Thêm chức năng nhập font vào QuickLayout
