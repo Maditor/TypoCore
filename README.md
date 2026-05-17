@@ -8,6 +8,8 @@
 - Panel vẫn còn nhiều thiếu sót và đang trong thời gian nâng cấp, phát triển.
 - TypoCore sẽ không được thương mại dưới mọi hình thức
 - Cảm ơn mọi người đã quan tâm
+
+---
 - Dự Kiến Cập Nhật V1.4:
 + Điều chỉnh dữ liệu Quick layout để áp dụng cho nhiều trường hợp hơn.
 + Thêm chức năng bên trong FX Studio để đa dạng hiệu ứng hơn.
