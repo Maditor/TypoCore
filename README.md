@@ -1,4 +1,14 @@
 
+### ✨UPDATE TYPOCORE V1.3
+1. Mở rộng dữ liệu Quick Layout(chưa hoàn thiện vẫn còn cần nhiều nâng cấp)
+2. Sửa lỗi nút bị tối màu khi sử dụng(bỏ flash xanh đỏ báo hiệu chức năng được hoàn thành không)
+3. Thêm chức năng FX Studio chỉnh sửa nhanh một số hiệu ứng của Layer Text
+4. Tích hợp chức năng Center và Size-Leading vào Quick Layer dễ dàng thao tác hơn
+
+Panel vẫn còn nhiều thiếu sót và đang trong thời gian nâng cấp, phát triển.
+TypoCore sẽ không được thương mại dưới mọi hình thức
+Cảm ơn mọi người đã quan tâm
+
 ### ✨UPDATE TYPOCORE V1.2
 1. Thêm chức năng điều chỉnh độ dài khung của QuickLayout
 2. Thêm chức năng nhập font vào QuickLayout
