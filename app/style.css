@@ -1,75 +1,284 @@
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: Arial, sans-serif;
-  font-size: 11px;
-  background: #2b2b2b;
-  color: #ccc;
-  padding: 8px 8px 0 8px;
-  user-select: none;
-  overflow-y: auto;
-  height: 100vh;
-  margin: 0;
+/* ============================================================
+   RESET & CORE
+   ============================================================ */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
+body {
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+    background: #2b2b2b;
+    color: #ccc;
+    padding: 8px 8px 0 8px;
+    user-select: none;
+    overflow-y: auto;
+    height: 100vh;
+    margin: 0;
+}
+
+/* ============================================================
+   LAYOUT (Panel, Footer)
+   ============================================================ */
 .panel {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-height: 100%;
-  overflow: visible;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 100%;
+    overflow: visible;
 }
 
 .panel-footer {
-  margin-top: auto;
-  padding: 6px 0;
-  border-top: 1px solid #444;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  position: sticky;
-  bottom: 0;
-  background: #2b2b2b;
-  z-index: 9999;
+    margin-top: auto;
+    padding: 6px 0;
+    border-top: 1px solid #444;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: sticky;
+    bottom: 0;
+    background: #2b2b2b;
+    z-index: 9999;
 }
 
-.section { border: 1px solid #444; border-radius: 3px; padding: 6px; }
-.section-title { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
-.edit-mode .section { border-color: #f90 !important; cursor: grab; }
-.edit-mode .section:active { cursor: grabbing; }
-.drag-handle { display: none; float: right; color: #f90; font-size: 10px; cursor: grab; padding: 0 2px; user-select: none; }
-.edit-mode .drag-handle { display: inline; }
-.dragging { opacity: 0.4; border: 1px dashed #f90 !important; }
-.drag-over { border-color: #ff0 !important; background: #3a3500 !important; }
-.edit-mode [data-tool] { border-color: #f90 !important; cursor: grab !important; }
-button { background: #3c3c3c; color: #ccc; border: 1px solid #555; border-radius: 3px; cursor: pointer; font-size: 11px; font-family: Arial, sans-serif; transition: background 0.1s; }
-button:hover { background: #4a4a4a; }
+/* ============================================================
+   SECTIONS
+   ============================================================ */
+.section {
+    border: 1px solid #444;
+    border-radius: 3px;
+    padding: 6px;
+}
+
+.section-title {
+    font-size: 10px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+}
+
+/* Edit mode styles */
+.edit-mode .section {
+    border-color: #f90 !important;
+    cursor: grab;
+}
+
+.edit-mode .section:active {
+    cursor: grabbing;
+}
+
+.drag-handle {
+    display: none;
+    float: right;
+    color: #f90;
+    font-size: 10px;
+    cursor: grab;
+    padding: 0 2px;
+    user-select: none;
+}
+
+.edit-mode .drag-handle {
+    display: inline;
+}
+
+.dragging {
+    opacity: 0.4;
+    border: 1px dashed #f90 !important;
+}
+
+.drag-over {
+    border-color: #ff0 !important;
+    background: #3a3500 !important;
+}
+
+.edit-mode [data-tool] {
+    border-color: #f90 !important;
+    cursor: grab !important;
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+button {
+    background: #3c3c3c;
+    color: #ccc;
+    border: 1px solid #555;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 11px;
+    font-family: Arial, sans-serif;
+    transition: background 0.1s;
+}
+
+button:hover {
+    background: #4a4a4a;
+}
+
 button:active {
     transform: scale(0.97);
     transition: none;
-    /* không có background đặc biệt */
 }
-button:disabled { opacity: 0.4; cursor: default; }
-.case-grid { display: flex; flex-direction: column; gap: 4px; }
-.case-row { display: flex; gap: 4px; }
-.case-row button { flex: 1; height: 26px; }
-.split-row { display: flex; gap: 4px; }
-.split-row button { flex: 1; height: 26px; }
-.size-row { display: flex; align-items: center; justify-content: center; gap: 4px; }
-.size-row button { height: 26px; }
-.btn-apply { width: 48px; }
-.btn-arrow { width: 26px; }
-#sizeDisplay { width: 30px; text-align: center; font-size: 14px; font-weight: bold; color: #eee; background: #222; border: 1px solid #555; border-radius: 3px; height: 26px; line-height: 26px; padding: 0; outline: none; }
-#sizeDisplay:focus { border-color: #888; }
-.action-grid { display: flex; flex-direction: column; gap: 4px; }
-.action-row { display: flex; gap: 4px; min-height: 36px; transition: all 0.1s; }
-.action-row button { flex: 1; height: 36px; font-size: 11px; }
-.edit-mode .action-row:empty { border: 1px dashed #f90; background: #2a2a2a; border-radius: 3px; margin-bottom: 4px; position: relative; }
-.edit-mode .action-row:empty::before { content: "Drag buttons here,  \A Click to remove."; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 8px; color: #aaa; white-space: pre-line; pointer-events: none; text-align: center; line-height: 1.4; }
-button.flash-ok { background: #2a5a2a !important; color: #7f7 !important; }
-button.flash-err { background: #5a2a2a !important; color: #f77 !important; }
-.setting-wrapper { position: relative; display: inline-block; }
-.setting-btn { background: none; border: none; color: #aaa; font-size: 11px; cursor: pointer; text-decoration: underline; padding: 2px 0; font-family: Arial, sans-serif; }
-.setting-btn:hover { color: #fff; }
+
+button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+button:focus,
+button:focus-visible {
+    outline: none;
+}
+
+/* Flash states */
+button.flash-ok {
+    background: #2a5a2a !important;
+    color: #7f7 !important;
+}
+
+button.flash-err {
+    background: #5a2a2a !important;
+    color: #f77 !important;
+}
+
+/* ============================================================
+   CASE GRID, SPLIT, SIZE ROW
+   ============================================================ */
+.case-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.case-row {
+    display: flex;
+    gap: 4px;
+}
+
+.case-row button {
+    flex: 1;
+    height: 26px;
+}
+
+.split-row {
+    display: flex;
+    gap: 4px;
+}
+
+.split-row button {
+    flex: 1;
+    height: 26px;
+}
+
+.size-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.size-row button {
+    height: 26px;
+}
+
+.btn-apply {
+    width: 48px;
+}
+
+.btn-arrow {
+    width: 26px;
+}
+
+#sizeDisplay {
+    width: 30px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: bold;
+    color: #eee;
+    background: #222;
+    border: 1px solid #555;
+    border-radius: 3px;
+    height: 26px;
+    line-height: 26px;
+    padding: 0;
+    outline: none;
+}
+
+#sizeDisplay:focus {
+    border-color: #888;
+}
+
+/* ============================================================
+   ACTION GRID (Sortable)
+   ============================================================ */
+.action-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.action-row {
+    display: flex;
+    gap: 4px;
+    min-height: 36px;
+    transition: all 0.1s;
+}
+
+.action-row button {
+    flex: 1;
+    height: 36px;
+    font-size: 11px;
+}
+
+.edit-mode .action-row:empty {
+    border: 1px dashed #f90;
+    background: #2a2a2a;
+    border-radius: 3px;
+    margin-bottom: 4px;
+    position: relative;
+}
+
+.edit-mode .action-row:empty::before {
+    content: "Drag buttons here,  \A Click to remove.";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 8px;
+    color: #aaa;
+    white-space: pre-line;
+    pointer-events: none;
+    text-align: center;
+    line-height: 1.4;
+}
+
+/* ============================================================
+   SETTING POPUP
+   ============================================================ */
+.setting-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.setting-btn {
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 11px;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 2px 0;
+    font-family: Arial, sans-serif;
+}
+
+.setting-btn:hover {
+    color: #fff;
+}
+
 .setting-popup {
     display: none;
     position: absolute;
@@ -79,94 +288,356 @@ button.flash-err { background: #5a2a2a !important; color: #f77 !important; }
     background: #383838;
     border: 1px solid #555;
     border-radius: 4px;
-    z-index: 999999 !important;  /* tăng lên cao hơn popup khác */
+    z-index: 999999;
     min-width: 180px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
     padding: 4px 0;
     max-height: 350px;
     overflow-y: auto;
 }
-.setting-popup.show { display: block; }
-.setting-item { display: flex; align-items: center; padding: 5px 12px; cursor: pointer; font-size: 11px; color: #ddd; white-space: nowrap; }
-.setting-item:hover { background: #4a4a4a; }
-.setting-item input[type="checkbox"] { margin-right: 8px; }
-.setting-separator { border-top: 1px solid #555; margin: 4px 0; }
-#previewOverlay { display: none; position: relative; z-index: 1000; margin-top: 4px; pointer-events: none; }
-#previewPopup { position: relative; width: 100%; max-height: 1080px; background: #2b2b2b; border: 1px solid #555; border-radius: 6px; display: flex; flex-direction: column; overflow: visible; pointer-events: auto; box-shadow: 0 8px 16px rgba(0,0,0,0.6); }
-.preview-header { display: grid; grid-template-columns: 1fr auto 1fr; justify-content: space-between; align-items: center; padding: 6px 10px; background: #3a3a3a; border-bottom: 1px solid #555; position: sticky; top: 0; z-index: 10; flex-shrink: 0; }
+
+.setting-popup.show {
+    display: block;
+}
+
+.setting-item {
+    display: flex;
+    align-items: center;
+    padding: 5px 12px;
+    cursor: pointer;
+    font-size: 11px;
+    color: #ddd;
+    white-space: nowrap;
+}
+
+.setting-item:hover {
+    background: #4a4a4a;
+}
+
+.setting-item input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+.setting-separator {
+    border-top: 1px solid #555;
+    margin: 4px 0;
+}
+
+/* ============================================================
+   QUICK LAYOUT (Preview)
+   ============================================================ */
+#previewOverlay {
+    display: none;
+    position: relative;
+    z-index: 1000;
+    margin-top: 4px;
+    pointer-events: none;
+}
+
+#previewPopup {
+    position: relative;
+    width: 100%;
+    max-height: 1080px;
+    background: #2b2b2b;
+    border: 1px solid #555;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+    pointer-events: auto;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
+}
+
+.preview-header {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    background: #3a3a3a;
+    border-bottom: 1px solid #555;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    flex-shrink: 0;
+}
+
 .preview-header button {
-  width: 36px;
-  height: 28px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  text-align: center;
+    width: 36px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
 }
-.preview-header button:hover { background: #5a5a5a; }
+
+.preview-header button:hover {
+    background: #5a5a5a;
+}
+
 .preview-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px;
-  overflow-y: auto;
-  flex: 1;
-  margin-bottom: 8px;   /* ← thêm dòng này */
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    overflow-y: auto;
+    flex: 1;
+    margin-bottom: 8px;
 }
-.preview-item { background: #383838; border: 1px solid #4a4a4a; border-radius: 4px; padding: 5px; text-align: center; font-size: 8px; color: #ddd; cursor: pointer; transition: background 0.15s, border-color 0.15s; white-space: pre-wrap; word-wrap: break-word; width: max-content; min-width: 100%; }
-.preview-item:hover { background: #4a4a4a; border-color: #888; }
-#btnPreviewLayout { height: 24px; width: 100%; }
-.preview-grid.horizontal { flex-direction: row; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; margin-bottom: 8px; }
-.preview-grid.horizontal .preview-item { flex: 0 0 auto; min-width: 150px; width: max-content; white-space: nowrap; }
-.footer-credit { font-size: 9px; color: #555; user-select: none; pointer-events: none; }
-.preview-grid::-webkit-scrollbar, .setting-popup::-webkit-scrollbar, .preview-subpopup-body::-webkit-scrollbar { width: 7px; height: 7px; background: #1a1a1a; }
-.preview-grid::-webkit-scrollbar-track, .setting-popup::-webkit-scrollbar-track, .preview-subpopup-body::-webkit-scrollbar-track { background: #2b2b2b; }
-.preview-grid::-webkit-scrollbar-thumb, .setting-popup::-webkit-scrollbar-thumb, .preview-subpopup-body::-webkit-scrollbar-thumb { background: #777; border-radius: 2px; }
-.preview-grid::-webkit-scrollbar-thumb:hover, .setting-popup::-webkit-scrollbar-thumb:hover, .preview-subpopup-body::-webkit-scrollbar-thumb:hover { background: #555; }
-.preview-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 3px 6px; height: 35px; background: #2b2b2b; border-top: 1px solid #555; flex-shrink: 0; position: relative; }
-.preview-toolbar button { height: 22px; font-size: 10px; padding: 0 6px; background: #3c3c3c; border: 1px solid #555; color: #ccc; border-radius: 3px; cursor: pointer; }
-.preview-toolbar button:hover { background: #4a4a4a; }
-#previewSizeDisplay { font-size: 11px; font-weight: bold; color: #eee; min-width: 24px; text-align: center; background: #222; border: 1px solid #555; border-radius: 3px; padding: 1px 4px; line-height: 1.4; }
-.size-group { display: flex; align-items: center; }
-.size-group > * { margin: 0; border-radius: 0; }
-.size-group > button:first-child { border-radius: 3px 0 0 3px; }
-.size-group > button:last-child { border-radius: 0 3px 3px 0; }
-#previewSizeDisplay { border-left: none; border-right: none; }
-#fontPickerPopup { position: absolute; top: 100%; left: 0; width: 100%; z-index: 200 !important; background: #383838; border: 1px solid #555; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-height: 260px; display: none; flex-direction: column; }
-.preview-subpopup-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: #3a3a3a; border-bottom: 1px solid #555; font-weight: bold; font-size: 12px; color: #eee; flex-shrink: 0; }
-.preview-subpopup-header button { background: none; border: none; color: #ddd; cursor: pointer; font-size: 14px; padding: 0 4px; }
-.preview-subpopup-body { overflow-y: auto; flex: 1; padding: 4px; }
-.preview-subpopup-footer { border-top: 1px solid #555; padding: 6px; flex-shrink: 0; }
-.preview-subpopup-footer button { width: 100%; height: 26px; font-size: 11px; }
-.font-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; cursor: pointer; border-radius: 3px; font-size: 11px; }
-.font-item:hover { background: #4a4a4a; }
-.font-item.selected { background: #288edf; color: #fff; }
-.font-item .font-index { font-weight: bold; margin-right: 8px; }
-.font-item .font-remove { color: #f77; cursor: pointer; padding: 2px 6px; font-size: 14px; }
-button:active { background: #1a1a1a; transform: scale(0.97); transition: none; }
-button:focus { outline: none; }
-button:focus-visible { outline: none; }
-body::-webkit-scrollbar, .panel::-webkit-scrollbar { width: 7px; height: 7px; background: #1a1a1a; }
-body::-webkit-scrollbar-track, .panel::-webkit-scrollbar-track { background: #2b2b2b; }
-body::-webkit-scrollbar-thumb, .panel::-webkit-scrollbar-thumb { background: #999; border-radius: 2px; }
-body::-webkit-scrollbar-thumb:hover, .panel::-webkit-scrollbar-thumb:hover { background: #bbb; }
-.sortable-fallback { opacity: 0.6; border: 1px dashed #f90; background: #3a3500; }
-#saveLayoutBtn { background: #2a5a2a; border-color: #6a6; }
-#saveLayoutBtn:hover { background: #3a7a3a; }
-.draggable-only { pointer-events: none; opacity: 0.7; }
-.edit-mode [data-tool] { cursor: grab !important; }
-.resize-handle { background: #777; transition: background 0.1s; }
-.resize-handle:hover { background: #f90; }
-body.edit-mode.actions-hidden #addRowBtn { pointer-events: none; opacity: 0.5; cursor: not-allowed; }
-.font-item .font-name input { width: 100%; background: #222; border: 1px solid #555; color: #eee; font-size: 11px; padding: 2px 4px; border-radius: 2px; outline: none; box-sizing: border-box; }
-.preview-subpopup-footer-add { display: flex; flex-direction: column; gap: 4px; padding: 6px; border-top: 1px solid #555; flex-shrink: 0; align-items: stretch; }
-.preview-subpopup-footer-add input { height: 24px; background: #222; border: 1px solid #555; color: #eee; font-size: 11px; padding: 2px 6px; border-radius: 3px; outline: none; box-sizing: border-box; width: 100%; }
-.preview-subpopup-footer-add input:focus { border-color: #888; }
-.preview-subpopup-footer-add button { height: 24px; font-size: 11px; padding: 0 12px; background: #3c3c3c; border: 1px solid #555; color: #ccc; border-radius: 3px; cursor: pointer; white-space: nowrap; align-self: center; min-width: 60px; }
 
-/* FX Overlay */
-#fxOverlay { position: relative; z-index: 10; margin-top: 4px; }
+.preview-item {
+    background: #383838;
+    border: 1px solid #4a4a4a;
+    border-radius: 4px;
+    padding: 5px;
+    text-align: center;
+    font-size: 8px;
+    color: #ddd;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    width: max-content;
+    min-width: 100%;
+}
+
+.preview-item:hover {
+    background: #4a4a4a;
+    border-color: #888;
+}
+
+#btnPreviewLayout {
+    height: 24px;
+    width: 100%;
+}
+
+.preview-grid.horizontal {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    margin-bottom: 8px;
+}
+
+.preview-grid.horizontal .preview-item {
+    flex: 0 0 auto;
+    min-width: 150px;
+    width: max-content;
+    white-space: nowrap;
+}
+
+/* Preview toolbar */
+.preview-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 6px;
+    height: 35px;
+    background: #2b2b2b;
+    border-top: 1px solid #555;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.preview-toolbar button {
+    height: 22px;
+    font-size: 10px;
+    padding: 0 6px;
+    background: #3c3c3c;
+    border: 1px solid #555;
+    color: #ccc;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.preview-toolbar button:hover {
+    background: #4a4a4a;
+}
+
+#previewSizeDisplay {
+    font-size: 11px;
+    font-weight: bold;
+    color: #eee;
+    min-width: 24px;
+    text-align: center;
+    background: #222;
+    border: 1px solid #555;
+    border-radius: 3px;
+    padding: 1px 4px;
+    line-height: 1.4;
+}
+
+.size-group {
+    display: flex;
+    align-items: center;
+}
+
+.size-group > * {
+    margin: 0;
+    border-radius: 0;
+}
+
+.size-group > button:first-child {
+    border-radius: 3px 0 0 3px;
+}
+
+.size-group > button:last-child {
+    border-radius: 0 3px 3px 0;
+}
+
+#previewSizeDisplay {
+    border-left: none;
+    border-right: none;
+}
+
+/* Font picker popup */
+#fontPickerPopup {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    z-index: 200;
+    background: #383838;
+    border: 1px solid #555;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    max-height: 260px;
+    display: none;
+    flex-direction: column;
+}
+
+.preview-subpopup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    background: #3a3a3a;
+    border-bottom: 1px solid #555;
+    font-weight: bold;
+    font-size: 12px;
+    color: #eee;
+    flex-shrink: 0;
+}
+
+.preview-subpopup-header button {
+    background: none;
+    border: none;
+    color: #ddd;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 4px;
+}
+
+.preview-subpopup-body {
+    overflow-y: auto;
+    flex: 1;
+    padding: 4px;
+}
+
+.preview-subpopup-footer {
+    border-top: 1px solid #555;
+    padding: 6px;
+    flex-shrink: 0;
+}
+
+.preview-subpopup-footer button {
+    width: 100%;
+    height: 26px;
+    font-size: 11px;
+}
+
+.font-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 11px;
+}
+
+.font-item:hover {
+    background: #4a4a4a;
+}
+
+.font-item.selected {
+    background: #288edf;
+    color: #fff;
+}
+
+.font-item .font-index {
+    font-weight: bold;
+    margin-right: 8px;
+}
+
+.font-item .font-remove {
+    color: #f77;
+    cursor: pointer;
+    padding: 2px 6px;
+    font-size: 14px;
+}
+
+.font-item .font-name input {
+    width: 100%;
+    background: #222;
+    border: 1px solid #555;
+    color: #eee;
+    font-size: 11px;
+    padding: 2px 4px;
+    border-radius: 2px;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.preview-subpopup-footer-add {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px;
+    border-top: 1px solid #555;
+    flex-shrink: 0;
+    align-items: stretch;
+}
+
+.preview-subpopup-footer-add input {
+    height: 24px;
+    background: #222;
+    border: 1px solid #555;
+    color: #eee;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    outline: none;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.preview-subpopup-footer-add input:focus {
+    border-color: #888;
+}
+
+.preview-subpopup-footer-add button {
+    height: 24px;
+    font-size: 11px;
+    padding: 0 12px;
+    background: #3c3c3c;
+    border: 1px solid #555;
+    color: #ccc;
+    border-radius: 3px;
+    cursor: pointer;
+    white-space: nowrap;
+    align-self: center;
+    min-width: 60px;
+}
+
+/* ============================================================
+   FX MANAGER (Overlay & Popup)
+   ============================================================ */
+#fxOverlay {
+    position: relative;
+    z-index: 10;
+    margin-top: 4px;
+}
 
 .fx-header {
     display: flex;
@@ -178,6 +649,7 @@ body.edit-mode.actions-hidden #addRowBtn { pointer-events: none; opacity: 0.5; c
     border-radius: 6px 6px 0 0;
     flex-shrink: 0;
 }
+
 .fx-header button {
     background: #4a4a4a;
     border: 1px solid #666;
@@ -188,18 +660,23 @@ body.edit-mode.actions-hidden #addRowBtn { pointer-events: none; opacity: 0.5; c
     cursor: pointer;
     white-space: nowrap;
 }
-.fx-header button:hover { background: #5a5a5a; }
+
+.fx-header button:hover {
+    background: #5a5a5a;
+}
 
 .fx-section {
     padding: 5px 2px;
     border-bottom: 1px solid #333;
 }
+
 .fx-section-header {
     display: flex;
     align-items: center;
     gap: 5px;
     margin-bottom: 4px;
 }
+
 .fx-section-header label {
     display: flex;
     align-items: center;
@@ -210,17 +687,20 @@ body.edit-mode.actions-hidden #addRowBtn { pointer-events: none; opacity: 0.5; c
     flex: 1;
     cursor: pointer;
 }
+
 .fx-section-header .fx-swatches {
     display: flex;
     gap: 3px;
     align-items: center;
 }
+
 .fx-row {
     display: flex;
     align-items: center;
     gap: 4px;
     margin-bottom: 3px;
 }
+
 .fx-row-label {
     font-size: 10px;
     color: #999;
@@ -228,6 +708,7 @@ body.edit-mode.actions-hidden #addRowBtn { pointer-events: none; opacity: 0.5; c
     flex-shrink: 0;
     text-align: right;
 }
+
 .fx-row input[type="range"] {
     flex: 1;
     height: 3px;
@@ -235,6 +716,7 @@ body.edit-mode.actions-hidden #addRowBtn { pointer-events: none; opacity: 0.5; c
     cursor: pointer;
     min-width: 0;
 }
+
 .fx-row-val {
     width: 36px;
     height: 22px;
@@ -247,9 +729,13 @@ body.edit-mode.actions-hidden #addRowBtn { pointer-events: none; opacity: 0.5; c
     padding: 0 2px;
     box-sizing: border-box;
 }
-.fx-row-val:focus { border-color: #f90; outline: none; }
 
-/* Góc gradient - cùng hàng, input sát phải */
+.fx-row-val:focus {
+    border-color: #f90;
+    outline: none;
+}
+
+/* Gradient angle row */
 .fx-angle-row {
     display: flex;
     align-items: center;
@@ -258,18 +744,24 @@ body.edit-mode.actions-hidden #addRowBtn { pointer-events: none; opacity: 0.5; c
     margin-bottom: 3px;
     flex-wrap: nowrap;
 }
+
 .fx-angle-row canvas {
     width: 40px;
     height: 40px;
     cursor: grab;
     flex-shrink: 0;
 }
-.fx-angle-row canvas:active { cursor: grabbing; }
+
+.fx-angle-row canvas:active {
+    cursor: grabbing;
+}
+
 .fx-angle-row .fx-angle-label {
     font-size: 10px;
     color: #999;
     flex-shrink: 0;
 }
+
 #gradientAngleInput {
     width: 42px;
     height: 22px;
@@ -283,6 +775,7 @@ body.edit-mode.actions-hidden #addRowBtn { pointer-events: none; opacity: 0.5; c
     margin-left: auto;
 }
 
+/* Stroke single line */
 .fx-stroke-single {
     display: flex;
     align-items: center;
@@ -291,6 +784,8 @@ body.edit-mode.actions-hidden #addRowBtn { pointer-events: none; opacity: 0.5; c
     color: #aaa;
     margin-top: 1px;
 }
+
+/* Color swatches */
 .color-swatch {
     width: 22px;
     height: 22px;
@@ -301,109 +796,7 @@ body.edit-mode.actions-hidden #addRowBtn { pointer-events: none; opacity: 0.5; c
     flex-shrink: 0;
 }
 
-/* Đảm bảo các nút FG và BG nằm cùng hàng */
-.buttons-row {
-    display: flex;
-    gap: 6px;
-    margin-top: 3px; /* tùy chỉnh khoảng cách với lưới màu */
-}
-.buttons-row button {
-    flex: 1;
-    background: #3c3c3c;
-    color: #ccc;
-    border: 1px solid #555;
-    padding: 2px 3px;
-    font-size: 8px;
-    cursor: pointer;
-    border-radius: 3px;
-    height: 18px;
-    line-height: 1;
-}
-.buttons-row button:hover {
-    background: #4a4a4a;
-}
-
-
-
-
-
-#colorPickerPopup {
-    display: none;
-    position: fixed;       /* quan trọng */
-    z-index: 100000;       /* cao nhất */
-    flex-direction: column;
-    background: #383838;
-    border: 1px solid #555;
-    border-radius: 4px;
-    padding: 6px 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
-    min-width: 120px;
-    max-width: 120px;
-}
-.color-presets {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-/* Recent colors - flex, sát nhau */
-.recent-colors {
-    display: flex;
-    flex-wrap: nowrap;        /* không xuống dòng, giữ 5 ô trên một hàng */
-    gap: 0;                   /* không có khoảng cách */
-    justify-content: flex-start;
-}
-.recent-colors .swatch {
-    width: 16px;
-    height: 16px;
-    margin: 0;
-    border: none;
-    outline: 1px solid #444;   /* viền mảnh để phân cách các ô */
-    outline-offset: -1px;
-    border-radius: 1px;
-    flex-shrink: 0;
-}
-.fg-color, .bg-color {
-    background: #3c3c3c;
-    color: #ccc;
-    border: 1px solid #555;
-    padding: 2px 3px;
-    font-size: 8px;
-    cursor: pointer;
-    border-radius: 3px;
-    height: 18px;
-    line-height: 1;
-    margin-top: 3px;
-}
-.fg-color:hover, .bg-color:hover { background: #4a4a4a; }
-
-/* Toolbar và thanh kéo */
-.fx-toolbar {
-    position: relative;
-    flex-shrink: 0;
-    padding: 6px 8px;
-    border-top: 1px solid #444;
-    display: flex;
-    justify-content: center;
-    background: #2b2b2b;
-}
-#btnFxApply {
-    margin: 0;
-    height: 23px;
-    font-size: 11px;
-    cursor: pointer;
-    width: auto;
-    padding: 0 15px;
-}
-
-.fx-resize-handle {
-    height: 5px;
-    background: #555;
-    cursor: ns-resize;
-    flex-shrink: 0;
-}
-.fx-resize-handle:hover {
-    background: #777; 
-}
+/* Quick FG/BG button */
 .quick-fgbg {
     background: #3c3c3c;
     border: 1px solid #555;
@@ -416,29 +809,220 @@ body.edit-mode.actions-hidden #addRowBtn { pointer-events: none; opacity: 0.5; c
     line-height: 1;
     white-space: nowrap;
 }
-.quick-fgbg:hover { background: #4a4a4a; }
-.quick-fgbg:active { transform: scale(0.96); }
 
-/* Scrollbar cho vùng cuộn FX Manager giống Quick Layout */
+.quick-fgbg:hover {
+    background: #4a4a4a;
+}
+
+.quick-fgbg:active {
+    transform: scale(0.96);
+}
+
+/* Color picker popup (global) */
+#colorPickerPopup {
+    display: none;
+    position: fixed;
+    z-index: 100000;
+    flex-direction: column;
+    background: #383838;
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 6px 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+    min-width: 120px;
+    max-width: 120px;
+}
+
+.color-presets {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.recent-colors {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0;
+    justify-content: flex-start;
+}
+
+.recent-colors .swatch {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    border: none;
+    outline: 1px solid #444;
+    outline-offset: -1px;
+    border-radius: 1px;
+    flex-shrink: 0;
+}
+
+.fg-color,
+.bg-color {
+    background: #3c3c3c;
+    color: #ccc;
+    border: 1px solid #555;
+    padding: 2px 3px;
+    font-size: 8px;
+    cursor: pointer;
+    border-radius: 3px;
+    height: 18px;
+    line-height: 1;
+    margin-top: 3px;
+}
+
+.fg-color:hover,
+.bg-color:hover {
+    background: #4a4a4a;
+}
+
+.buttons-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 3px;
+}
+
+.buttons-row button {
+    flex: 1;
+    background: #3c3c3c;
+    color: #ccc;
+    border: 1px solid #555;
+    padding: 2px 3px;
+    font-size: 8px;
+    cursor: pointer;
+    border-radius: 3px;
+    height: 18px;
+    line-height: 1;
+}
+
+.buttons-row button:hover {
+    background: #4a4a4a;
+}
+
+/* Color grid */
+.color-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 14px);
+    gap: 1px;
+    justify-content: start;
+    margin-top: 4px;
+    margin-bottom: 2px;
+}
+
+.color-grid > div {
+    width: 14px;
+    height: 14px;
+    border: none;
+    outline: 1px solid #444;
+    outline-offset: -1px;
+    transition: transform 0.05s;
+}
+
+.color-grid > div:hover {
+    transform: scale(1.1);
+    z-index: 1;
+}
+
+/* ============================================================
+   FX MANAGER POPUP (main container & scroll)
+   ============================================================ */
+#fxPopup {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    overflow: hidden;
+}
+
+.fx-scroll {
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.fx-resize-handle {
+    flex-shrink: 0;
+    height: 5px;
+    background: #555;
+    cursor: ns-resize;
+}
+
+.fx-resize-handle:hover {
+    background: #777;
+}
+
+.fx-toolbar {
+    flex-shrink: 0;
+    padding: 5px 8px;
+    border-top: 1px solid #444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #2b2b2b;
+    position: relative;
+}
+
+#btnFxToggleMode {
+    position: absolute;
+    left: 8px;
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 10px;
+    cursor: pointer;
+    padding: 2px 0;
+    text-decoration: underline;
+    font-family: Arial, sans-serif;
+}
+
+#btnFxToggleMode:hover {
+    color: #ccc;
+}
+
+#btnFxApply {
+    height: 23px;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0 20px;
+}
+
+#btnFxApply:hover {
+    background: #4a4a4a;
+}
+
+/* Accordion effect for sections (JS controlled) */
+.fx-section-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.2s ease;
+    margin: 0;
+    padding: 0;
+}
+
+/* Custom scrollbar for fx-scroll */
 .fx-scroll::-webkit-scrollbar {
     width: 7px;
     height: 7px;
     background: #1a1a1a;
 }
+
 .fx-scroll::-webkit-scrollbar-track {
     background: #2b2b2b;
 }
+
 .fx-scroll::-webkit-scrollbar-thumb {
     background: #777;
     border-radius: 2px;
 }
+
 .fx-scroll::-webkit-scrollbar-thumb:hover {
     background: #555;
 }
+
 .fx-scroll::-webkit-scrollbar-corner {
     background: #1a1a1a;
 }
-/* ===== CUSTOM CHECKBOX MÀU XÁM ===== */
+
+/* Custom checkboxes */
 .fx-section-header input[type="checkbox"],
 .fx-stroke-single input[type="checkbox"] {
     -webkit-appearance: none;
@@ -453,11 +1037,13 @@ body.edit-mode.actions-hidden #addRowBtn { pointer-events: none; opacity: 0.5; c
     margin: 0 4px 0 0;
     vertical-align: middle;
 }
+
 .fx-section-header input[type="checkbox"]:checked,
 .fx-stroke-single input[type="checkbox"]:checked {
     background: #888;
     border-color: #aaa;
 }
+
 .fx-section-header input[type="checkbox"]:checked::after,
 .fx-stroke-single input[type="checkbox"]:checked::after {
     content: "✔";
@@ -468,7 +1054,7 @@ body.edit-mode.actions-hidden #addRowBtn { pointer-events: none; opacity: 0.5; c
     color: #fff;
 }
 
-/* ===== CUSTOM RANGE SLIDER MÀU XÁM ===== */
+/* Custom range slider */
 .fx-row input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
@@ -477,9 +1063,11 @@ body.edit-mode.actions-hidden #addRowBtn { pointer-events: none; opacity: 0.5; c
     border-radius: 2px;
     outline: none;
 }
+
 .fx-row input[type="range"]:focus {
     outline: none;
 }
+
 .fx-row input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     width: 8px;
@@ -489,39 +1077,141 @@ body.edit-mode.actions-hidden #addRowBtn { pointer-events: none; opacity: 0.5; c
     cursor: pointer;
     margin-top: -4px;
 }
+
 .fx-row input[type="range"]::-webkit-slider-thumb:hover {
     background: #bbb;
 }
+
 .fx-row input[type="range"]::-webkit-slider-runnable-track {
     height: 3px;
     background: #444;
     border-radius: 2px;
 }
+
+/* Spinner animation */
 @keyframes spin {
-  to { transform: rotate(360deg); }
-}
-.color-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 14px);  /* 7 cột, mỗi cột 14px */
-    gap: 1px;                               /* khoảng cách giữa các ô */
-    justify-content: start;
-    margin-top: 4px;
-    margin-bottom: 2px;
-}
-.color-grid > div {
-    width: 14px;
-    height: 14px;
-    border: none;
-    outline: 1px solid #444;
-    outline-offset: -1px;
-    transition: transform 0.05s;
-}
-.color-grid > div:hover {
-    transform: scale(1.1);
-    z-index: 1;
+    to {
+        transform: rotate(360deg);
+    }
 }
 
-/* ========== PRV NEW TOOLBAR ========== */
+/* ============================================================
+   FX MANAGER - LESS MODE (compact)
+   ============================================================ */
+#fxPopup.fx-less-mode .fx-section {
+    padding: 2px 0 !important;
+    margin-bottom: 0;
+}
+
+#fxPopup.fx-less-mode .fx-section-header {
+    margin-bottom: 2px !important;
+    padding: 3px 6px !important;
+}
+
+#fxPopup.fx-less-mode .fx-section-header label {
+    font-size: 10px;
+    line-height: 18px;
+}
+
+#fxPopup.fx-less-mode .fx-section-body {
+    padding: 0 0 2px 0 !important;
+}
+
+#fxPopup.fx-less-mode .fx-row {
+    margin-bottom: 2px !important;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+#fxPopup.fx-less-mode .fx-row-label {
+    width: 36px;
+    font-size: 9px;
+    line-height: 20px;
+}
+
+#fxPopup.fx-less-mode .fx-row input[type="range"] {
+    height: 2px;
+    margin: 0;
+    flex: 1;
+}
+
+#fxPopup.fx-less-mode .fx-row-val,
+#fxPopup.fx-less-mode #gradientAngleInput {
+    height: 22px;
+    width: 38px; /* adjust for gradient input width */
+    font-size: 10px;
+    padding: 4px 0 !important;
+    text-align: center;
+    box-sizing: border-box;
+    border: 1px solid #555;
+    background: #222;
+    color: #eee;
+    border-radius: 3px;
+    margin: 0;
+    flex-shrink: 0;
+    -moz-appearance: textfield;
+    appearance: textfield;
+    line-height: normal !important;
+}
+
+/* override width for gradient angle input */
+#fxPopup.fx-less-mode #gradientAngleInput {
+    width: 42px;
+}
+
+/* Hide spinners */
+#fxPopup.fx-less-mode .fx-row-val::-webkit-inner-spin-button,
+#fxPopup.fx-less-mode .fx-row-val::-webkit-outer-spin-button,
+#fxPopup.fx-less-mode #gradientAngleInput::-webkit-inner-spin-button,
+#fxPopup.fx-less-mode #gradientAngleInput::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+#fxPopup.fx-less-mode .fx-angle-row {
+    margin-top: 2px;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+#fxPopup.fx-less-mode .color-swatch {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+#fxPopup.fx-less-mode .fx-angle-row canvas {
+    width: 20px;
+    height: 20px;
+    display: block;
+}
+
+#fxPopup.fx-less-mode .quick-fgbg {
+    height: 20px;
+    line-height: 18px;
+    font-size: 9px;
+    padding: 0 6px;
+}
+
+#fxPopup.fx-less-mode .fx-swatches {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+/* Hide number inputs in Less mode (if desired - kept from original) */
+#fxPopup.fx-less-mode .fx-row-val,
+#fxPopup.fx-less-mode #gradientAngleInput {
+    display: none !important;
+}
+
+/* ============================================================
+   PRV NEW TOOLBAR (additional styles)
+   ============================================================ */
 #btnPreviewMode {
     background: #3c3c3c;
     border: 1px solid #666;
@@ -531,7 +1221,10 @@ body.edit-mode.actions-hidden #addRowBtn { pointer-events: none; opacity: 0.5; c
     border-radius: 3px;
     cursor: pointer;
 }
-#btnPreviewMode:hover { background: #5a5a5a; }
+
+#btnPreviewMode:hover {
+    background: #5a5a5a;
+}
 
 .prv-left-btn {
     height: 22px;
@@ -558,7 +1251,7 @@ body.edit-mode.actions-hidden #addRowBtn { pointer-events: none; opacity: 0.5; c
     line-height: 1;
 }
 
-/* Spinbox: ô input có ▲▼ bên trong */
+/* Spinbox */
 .prv-spinbox {
     position: relative;
     display: flex;
@@ -638,51 +1331,32 @@ body.edit-mode.actions-hidden #addRowBtn { pointer-events: none; opacity: 0.5; c
     background: #222;
     transform: none;
 }
-.preview-header {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-}
 
-#btnPreviewLoad {
-  justify-self: start;
-}
-
-#btnPreviewToggle {
-  justify-self: center;
-}
-
-#btnPreviewMode {
-  justify-self: end;
-}
-
-/* đồng bộ size */
-.preview-header button {
-  width: 36px;
-  height: 28px;
-}
-/* Ẩn spin khi mode = font */
+/* Hide spin when mode = font */
 #sizeControl[data-mode="font"] .prv-spinbox-btns {
     display: none;
 }
 
-/* Mode Font: số căn giữa toàn ô */
+/* Mode Font: center number */
 #sizeControl[data-mode="font"] .prv-spinbox input {
     padding: 4px 8px;
     text-align: center;
 }
 
-/* Mode Center: số căn giữa vùng bên trái spin */
+/* Mode Center: number aligned left */
 #sizeControl[data-mode="center"] .prv-spinbox input {
     padding: 4px 20px 4px 0;
     text-align: center;
 }
-/* ===== THU GỌN HEADER & TOOLBAR ===== */
 
-/* Quick Layout: header (Load, H/V, Mode) */
+/* ============================================================
+   COMPACT MODE OVERRIDES (Headers/Toolbars)
+   ============================================================ */
+/* Quick Layout header and toolbar compact */
 .preview-header {
-    padding: 2px 6px !important;   /* giảm padding trên/dưới */
+    padding: 2px 6px !important;
 }
+
 .preview-header button {
     height: 20px !important;
     font-size: 10px !important;
@@ -691,251 +1365,171 @@ body.edit-mode.actions-hidden #addRowBtn { pointer-events: none; opacity: 0.5; c
     padding-right: 8px !important;
 }
 
-/* Quick Layout: toolbar (Font/Center, spin, +/−) */
 .preview-toolbar {
     padding: 2px 4px !important;
 }
+
 .preview-toolbar button {
     height: 22px !important;
     font-size: 12px !important;
 }
+
 .prv-spinbox input[type="number"] {
     height: 22px !important;
     font-size: 12px !important;
-    padding: 0 16px 0 4px !important;  /* giữ lại spin */
+    padding: 0 16px 0 4px !important;
 }
+
 .prv-spinbox-btns button {
     height: auto !important;
     font-size: 6px !important;
     line-height: 1 !important;
 }
 
-/* FX Manager: header (Sync, Close) */
+/* FX Manager compact headers */
 .fx-header {
     padding: 2px 6px !important;
 }
+
 .fx-header button {
     padding: 2px 6px !important;
     font-size: 10px !important;
     height: auto !important;
 }
 
-/* FX Manager: toolbar (Apply) */
 .fx-toolbar {
     padding: 2px 4px !important;
 }
+
 #btnFxApply {
     height: 22px !important;
     font-size: 10px !important;
     padding: 0 10px !important;
 }
-/* Giảm chiều cao nút FX Manager */
+
 #btnOpenFX {
-    height: 24px !important;  /* ghi đè inline style */
+    height: 24px !important;
     font-size: 11px;
 }
 
-/* Mặc định: thu gọn (không checked) */
-.fx-section-body {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.2s ease;
-    margin: 0;
-    padding: 0;
-}
-/* Khi checkbox được check → mở rộng */
-.fx-enable:checked ~ .fx-section-body,
-.fx-section-header:has(.fx-enable:checked) + .fx-section-body {
-    max-height: 400px; /* đủ lớn để chứa toàn bộ slider */
+/* ============================================================
+   UTILITIES & OVERRIDES
+   ============================================================ */
+.footer-credit {
+    font-size: 9px;
+    color: #555;
+    user-select: none;
+    pointer-events: none;
 }
 
-/* Flex cho popup – header & toolbar cố định */
-#fxPopup {
-    display: flex;
-    flex-direction: column;
-    height: auto;          /* tự động theo nội dung */
-    overflow: hidden;
+.sortable-fallback {
+    opacity: 0.6;
+    border: 1px dashed #f90;
+    background: #3a3500;
 }
 
-.fx-scroll {
-    overflow-y: auto;
-    flex: 1 1 auto;        /* chiếm không gian còn lại, co giãn */
-    min-height: 0;         /* quan trọng: cho phép flex con co lại */
-    /* không đặt height cố định */
+#saveLayoutBtn {
+    background: #2a5a2a;
+    border-color: #6a6;
 }
 
-/* Header và toolbar cố định */
-.fx-header,
-.fx-toolbar {
-    flex-shrink: 0;
+#saveLayoutBtn:hover {
+    background: #3a7a3a;
 }
 
-/* Handle nằm giữa scroll và toolbar */
-.fx-resize-handle {
-    flex-shrink: 0;
-    height: 5px;
-    background: #555;
-    cursor: ns-resize;
+.draggable-only {
+    pointer-events: none;
+    opacity: 0.7;
 }
-.fx-resize-handle:hover {
+
+.resize-handle {
     background: #777;
+    transition: background 0.1s;
 }
 
-/* Accordion: ẩn body mặc định */
-.fx-section-body {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.2s ease;
-    margin: 0;
-    padding: 0;
+.resize-handle:hover {
+    background: #f90;
 }
-/* Không cần CSS :checked vì JS sẽ xử lý max-height */
-.fx-toolbar {
-    position: relative;
-    flex-shrink: 0;
-    padding: 5px 8px;
-    border-top: 1px solid #444;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+
+body.edit-mode.actions-hidden #addRowBtn {
+    pointer-events: none;
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Scrollbar for body and panel */
+body::-webkit-scrollbar,
+.panel::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+    background: #1a1a1a;
+}
+
+body::-webkit-scrollbar-track,
+.panel::-webkit-scrollbar-track {
     background: #2b2b2b;
 }
-#btnFxToggleMode {
-    position: absolute;
-    left: 8px;
-    background: none;
-    border: none;
-    color: #888;
-    font-size: 10px;
-    cursor: pointer;
-    padding: 2px 0;
-    text-decoration: underline;
-    font-family: Arial, sans-serif;
-}
-#btnFxToggleMode:hover { color: #ccc; }
-#btnFxApply {
-    height: 23px;
-    font-size: 11px;
-    cursor: pointer;
-    padding: 0 20px;
+
+body::-webkit-scrollbar-thumb,
+.panel::-webkit-scrollbar-thumb {
+    background: #999;
+    border-radius: 2px;
 }
 
-#btnFxApply:hover {
-    background: #4a4a4a;
+body::-webkit-scrollbar-thumb:hover,
+.panel::-webkit-scrollbar-thumb:hover {
+    background: #bbb;
 }
 
-/* FX Manager - Chế độ Less (thu gọn) - Căn chỉnh đẹp */
-#fxPopup.fx-less-mode .fx-section {
-    padding: 2px 0 !important;
-    margin-bottom: 0;
+/* Scrollbar for preview and settings popups (already defined, ensure consistency) */
+.preview-grid::-webkit-scrollbar,
+.setting-popup::-webkit-scrollbar,
+.preview-subpopup-body::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+    background: #1a1a1a;
 }
-#fxPopup.fx-less-mode .fx-section-header {
-    margin-bottom: 2px !important;
-    padding: 3px 6px !important;
+
+.preview-grid::-webkit-scrollbar-track,
+.setting-popup::-webkit-scrollbar-track,
+.preview-subpopup-body::-webkit-scrollbar-track {
+    background: #2b2b2b;
 }
-#fxPopup.fx-less-mode .fx-section-header label {
-    font-size: 10px;
-    line-height: 18px;
+
+.preview-grid::-webkit-scrollbar-thumb,
+.setting-popup::-webkit-scrollbar-thumb,
+.preview-subpopup-body::-webkit-scrollbar-thumb {
+    background: #777;
+    border-radius: 2px;
 }
-#fxPopup.fx-less-mode .fx-section-body {
-    padding: 0 0 2px 0 !important;
+
+.preview-grid::-webkit-scrollbar-thumb:hover,
+.setting-popup::-webkit-scrollbar-thumb:hover,
+.preview-subpopup-body::-webkit-scrollbar-thumb:hover {
+    background: #555;
 }
-#fxPopup.fx-less-mode .fx-row {
-    margin-bottom: 2px !important;
-    display: flex;
+
+/* Additional adjustments for preview header buttons */
+.preview-header {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    gap: 4px;
 }
-#fxPopup.fx-less-mode .fx-row-label {
+
+#btnPreviewLoad {
+    justify-self: start;
+}
+
+#btnPreviewToggle {
+    justify-self: center;
+}
+
+#btnPreviewMode {
+    justify-self: end;
+}
+
+/* Ensure button sizes for preview header */
+.preview-header button {
     width: 36px;
-    font-size: 9px;
-    line-height: 20px;
-}
-#fxPopup.fx-less-mode .fx-row input[type="range"] {
-    height: 2px;
-    margin: 0;
-    flex: 1;
-}
-/* SỬA LỖI Ô NHẬP SỐ (Stroke, Outer Glow) */
-#fxPopup.fx-less-mode .fx-row-val {
-    height: 22px;
-    width: 38px;
-    font-size: 10px;
-    padding: 4px 0 !important;
-    text-align: center;
-    box-sizing: border-box;
-    border: 1px solid #555;
-    background: #222;
-    color: #eee;
-    border-radius: 3px;
-    margin: 0;
-    flex-shrink: 0;
-    -moz-appearance: textfield;
-    appearance: textfield;
-    line-height: normal !important;
-}
-/* Ẩn spinner trên Chrome/Safari */
-#fxPopup.fx-less-mode .fx-row-val::-webkit-inner-spin-button,
-#fxPopup.fx-less-mode .fx-row-val::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-#fxPopup.fx-less-mode .fx-angle-row {
-    margin-top: 2px;
-    margin-bottom: 2px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-#fxPopup.fx-less-mode .color-swatch {
-    width: 20px;
-    height: 20px;
-    border-radius: 3px;
-    cursor: pointer;
-}
-#fxPopup.fx-less-mode .fx-angle-row canvas {
-    width: 20px;
-    height: 20px;
-    display: block;
-}
-#fxPopup.fx-less-mode .quick-fgbg {
-    height: 20px;
-    line-height: 18px;
-    font-size: 9px;
-    padding: 0 6px;
-}
-/* SỬA LỖI Ô NHẬP SỐ GÓC GRADIENT */
-#fxPopup.fx-less-mode #gradientAngleInput {
-    height: 22px;
-    width: 42px;
-    font-size: 10px;
-    padding: 4px 0 !important;
-    text-align: center;
-    box-sizing: border-box;
-    background: #222;
-    border: 1px solid #555;
-    color: #eee;
-    border-radius: 3px;
-    margin: 0;
-    flex-shrink: 0;
-    -moz-appearance: textfield;
-    appearance: textfield;
-    line-height: normal !important;
-}
-/* Ẩn spinner */
-#fxPopup.fx-less-mode #gradientAngleInput::-webkit-inner-spin-button,
-#fxPopup.fx-less-mode #gradientAngleInput::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-#fxPopup.fx-less-mode .fx-swatches {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-}
-
-/* Ẩn tất cả ô nhập số trong FX Manager khi ở chế độ Less */
-#fxPopup.fx-less-mode .fx-row-val,
-#fxPopup.fx-less-mode #gradientAngleInput {
-    display: none !important;
+    height: 28px;
 }

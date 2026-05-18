@@ -940,13 +940,17 @@ if (sw.id === "textColorSwatch") return;
 });
 
 // Gán thêm swatch Text Color - chỉ dùng double click để mở color picker Photoshop
+// Gán thêm swatch Text Color - click mở popup màu panel, double click mở color picker Photoshop
 (function() {
     var tcSwatch = document.getElementById("textColorSwatch");
     if (!tcSwatch) return;
-    // Xóa sự kiện click để tránh trùng lặp với dblclick
+    // Click: hiển thị popup màu panel
+    tcSwatch.addEventListener("click", function(e) {
+        showColorPicker(tcSwatch, e);
+    });
+    // Double click: mở color picker Photoshop
     tcSwatch.addEventListener("dblclick", function(e) {
         e.stopPropagation();
-        // Đóng popup màu của panel nếu đang mở
         var popup = document.getElementById("colorPickerPopup");
         if (popup) popup.style.display = "none";
         var current = getSwatchColor(tcSwatch);
@@ -1497,6 +1501,40 @@ startHotkeyListener();
 
 // Gọi khi panel khởi tạo
 startHotkeyListener();
+
+// ========== PANEL SIZE PERSISTENCE ==========
+(function() {
+    var W_KEY = 'typoCorePanelW';
+    var H_KEY = 'typoCorePanelH';
+    var saveTimer = null;
+
+    function saveSize() {
+        var w = window.innerWidth;
+        var h = window.innerHeight;
+        // Chỉ lưu khi panel đang mở thật sự (không phải iconic collapsed)
+        if (w > 30 && h > 30) {
+            localStorage.setItem(W_KEY, w);
+            localStorage.setItem(H_KEY, h);
+        }
+    }
+
+    function restoreSize() {
+        var w = parseInt(localStorage.getItem(W_KEY));
+        var h = parseInt(localStorage.getItem(H_KEY));
+        if (w > 30 && h > 30) {
+            cs.resizeContent(w, h);
+        }
+    }
+
+    // Lưu khi user resize panel, debounce 400ms
+    window.addEventListener('resize', function() {
+        if (saveTimer) clearTimeout(saveTimer);
+        saveTimer = setTimeout(saveSize, 400);
+    });
+
+    // Restore sau khi CS sẵn sàng
+    setTimeout(restoreSize, 300);
+})();
 
 function applyCase(n) { _exec('applyCase(' + n + ')'); }
 function splitEven(n) { _exec('splitEven(' + n + ')'); }
