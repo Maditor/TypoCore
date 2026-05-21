@@ -72,20 +72,23 @@ https://drive.google.com/drive/folders/1giaDXBR-Qn6iGMxBwE5yD-6j3jMYjIJo?usp=dri
 ### 🔹 Quick Layout
 - Xem nhanh nhiều bố cục bóng thoại chỉ với 1 lần load  
 - Hỗ trợ 2 chế độ ngang và dọc tiết kiệm không gian
-- Giúp sắp xếp thoại nhanh và gọn hơn  
+- Giúp sắp xếp thoại nhanh và gọn hơn
+
+### 🔹 FX Studio
+- Điều chỉnh nhanh hiệu ứng Gradient, Stroke, Outer Glow
+- Đồng bồ hiệu ứng và màu chữ từ Layer Text
 
 ### 🔹 Chia dòng thông minh
 - Tự động chia text thành **2 / 3 / 4 dòng**  
-- Giữ bố cục cân đối, dễ đọc  
+- Phù hợp với thoại vuông
 
 ### 🔹 Điều chỉnh Kích Thước
 - Tăng giảm nhanh **font size & leading**  
 - Tinh chỉnh cở chữ và cách dòng dễ dàng 
 
 ### 🔹 Công cụ nhanh
-- Resize, căn giữa  
-- Group, select, Check
-- Copy / Paste hiệu ứng (FX)  
+- Group/Center
+- Seclect/Logo
 
 ### 🔹 Logo Tool
 - Chọn logo trong phần setting  
@@ -94,7 +97,6 @@ https://drive.google.com/drive/folders/1giaDXBR-Qn6iGMxBwE5yD-6j3jMYjIJo?usp=dri
 ### 🔹 Tùy chỉnh panel
 - Ẩn / hiện các chức năng không dùng đến
 - Thay đổi Load thoại Tự động - Thủ Công
-- Bật / Tắt Copy Paste FX nhiều lần
 ---
 TypoCore By Maditor
 
