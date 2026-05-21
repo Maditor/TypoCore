@@ -1,6 +1,6 @@
 @echo off
 echo ========================================
-echo   TypoCore Panel V1.2 - Installer
+echo   TypoCore Panel V1.3.1 - Installer
 echo ========================================
 echo.
 echo Close Photoshop (if it is open).
