@@ -933,7 +933,7 @@ on("btnFxSync", "click", function() {
     syncTimeout = setTimeout(function() {
         var btn = document.getElementById("btnFxSync");
         cs.evalScript("getFXData()", function(json) {
-            if (!json || json === "NO_DOC" || json === "NO_FX" || json.indexOf("ERROR:") === 0) {
+            if (!json || json === "NO_DOC" || json.indexOf("ERROR:") === 0) {
                 alert("Không tìm thấy FX: " + (json || "undefined"));
                 if (btn) flash(btn, "NO_FX");
                 return;
