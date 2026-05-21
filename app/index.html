@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>TypoCore v1.2</title>
+<title>TypoCore v1.3.1</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -78,7 +78,7 @@
   </div>
 
 <div class="section" id="section-fx" data-drag-id="fx">
-  <button id="btnOpenFX" style="width:100%; height:36px;">FX Manager</button>
+  <button id="btnOpenFX" style="width:100%; height:36px;">FX Studio</button>
   <div id="fxOverlay" style="display:none; position:relative; margin-top:4px;">
     <div id="fxPopup">
       <div class="fx-header">
@@ -118,8 +118,8 @@
           <div class="fx-section-body">
             <div class="fx-row">
               <span class="fx-row-label">Size</span>
-              <input type="range" id="strokeSize1" min="0" max="20" value="1">
-              <input type="number" class="fx-row-val" id="strokeSize1Val" value="1" min="0" max="50" step="1">
+              <input type="range" id="strokeSize1" min="0" max="20" value="2">
+              <input type="number" class="fx-row-val" id="strokeSize1Val" value="2" min="0" max="50" step="1">
             </div>
           </div>
         </div>
@@ -140,13 +140,13 @@
             </div>
             <div class="fx-row">
               <span class="fx-row-label">Size</span>
-              <input type="range" id="glowSize" min="1" max="50" value="10">
-              <input type="number" class="fx-row-val" id="glowSizeVal" value="10" min="1" max="30" step="1">
+              <input type="range" id="glowSize" min="1" max="50" value="20">
+              <input type="number" class="fx-row-val" id="glowSizeVal" value="20" min="1" max="30" step="1">
             </div>
             <div class="fx-row">
               <span class="fx-row-label">Spread</span>
-              <input type="range" id="glowSpread" min="1" max="100" value="15">
-              <input type="number" class="fx-row-val" id="glowSpreadVal" value="15" min="1" max="100" step="1">
+              <input type="range" id="glowSpread" min="1" max="100" value="5">
+              <input type="number" class="fx-row-val" id="glowSpreadVal" value="5" min="1" max="100" step="1">
             </div>
           </div>
         </div>
@@ -188,40 +188,18 @@
   </div>
 </div>
 
-<div class="section" id="section-size" data-drag-id="size">
-  <div class="section-title">Font Size / Leading</div>
-  <div class="size-row">
-    <button class="btn-apply" id="btnMinus" onclick="applySize(-1)">−</button>
-    <button class="btn-arrow" onclick="changeStep(-1)">▼</button>
-    <input type="text" id="sizeDisplay" value="3" readonly title="Bước nhảy (1–50)">
-    <button class="btn-arrow" onclick="changeStep(1)">▲</button>
-    <button class="btn-apply" id="btnPlus"  onclick="applySize(1)">+</button>
-  </div>
-</div>
-
 <div class="section" id="section-actions" data-drag-id="actions">
   <div class="section-title">Actions</div>
   <div class="action-grid">
     <!-- hàng 1 -->
-    <div class="action-row" id="row-resize-center">
-      <button data-tool="resizeBox" onclick="runBtn('resizeBox()', this)">Resize</button>
-      <button data-tool="center"    onclick="runBtn('alignCenter()', this)">Center</button>
-    </div>
-    <!-- hàng 2 -->
-    <div class="action-row" id="row-group-check">
-      <button data-tool="groupText" onclick="runBtn('groupTextLayers()', this)">Group</button>
-      <button data-tool="checkBG"   onclick="runBtn('toggleCheck()', this)">Check</button>
-    </div>
-    <!-- hàng 3 -->
-    <div class="action-row" id="row-copypaste">
-      <button data-tool="copyFX"  id="btnCopyFX" onclick="doCopyFX()">Copy FX</button>
-      <button data-tool="pasteFX" id="btnPasteFX" onclick="doPasteFX()" disabled>Paste FX</button>
-    </div>
-    <!-- hàng 4 -->
-    <div class="action-row" id="row-select-logo">
-      <button data-tool="selectForm" onclick="runBtn('selectForm()', this)">Select</button>
-      <button data-tool="logo"       id="btnLogo" onclick="runBtn('placeLogo()', this)">Logo</button>
-    </div>
+   <div class="action-row" id="row-group-center">
+  <button data-tool="groupText" onclick="runBtn('groupTextLayers()', this)">Group</button>
+  <button data-tool="center"    onclick="runBtn('alignCenter()', this)">Center</button>
+</div>
+<div class="action-row" id="row-select-logo">
+  <button data-tool="selectForm" onclick="runBtn('selectForm()', this)">Select</button>
+  <button data-tool="logo"       id="btnLogo" onclick="runBtn('placeLogo()', this)">Logo</button>
+</div>
   </div>
 </div>
 
@@ -238,11 +216,6 @@
 
         <div class="setting-item" data-action="chooseLogo">🗁 Choose Logo</div>
         <div class="setting-item" data-action="pasteAllOpened">⎘ Paste Logo to All Opened</div>
-        
-<div class="setting-separator"></div>
-        <div class="setting-item" data-toggle="multiplePaste">
-          <input type="checkbox" id="toggle_multiplePaste"> Multiple Paste FX
-        </div>
         <div class="setting-separator"></div>
         <div class="setting-item" data-toggle="manualLoadText">
           <input type="checkbox" id="toggle_manualLoadText"> Manual Load Text
@@ -262,42 +235,26 @@
           <span id="toolManagerArrow" style="font-size: 10px;">▼</span>
         </div>
         <div id="toolManagerSub" style="display: none;">
-  <div class="setting-item" data-toggle="layoutCases">
-    <input type="checkbox" id="toggle_layoutCases"> Layout Cases
-  </div>
-  <div class="setting-item" data-toggle="splitEven">
-    <input type="checkbox" id="toggle_splitEven"> Split Even
-  </div>
-  <!-- THÊM HAI DÒNG MỚI -->
   <div class="setting-item" data-toggle="quickLayout">
     <input type="checkbox" id="toggle_quickLayout"> Quick Layout
   </div>
   <div class="setting-item" data-toggle="fxManager">
     <input type="checkbox" id="toggle_fxManager"> FX Manager
   </div>
-  <div class="setting-item" data-toggle="fontSize">
-            <input type="checkbox" id="toggle_fontSize"> Font Size / Leading
-          </div>
+  <div class="setting-item" data-toggle="layoutCases">
+    <input type="checkbox" id="toggle_layoutCases"> Layout Cases
+  </div>
+  <div class="setting-item" data-toggle="splitEven">
+    <input type="checkbox" id="toggle_splitEven"> Split Even
+  </div>
 	  <div class="setting-item" data-toggle="actionsSection">
     <input type="checkbox" id="toggle_actionsSection"> Actions
 </div>
-          <div class="setting-item" data-toggle="resizeBox">
-            <input type="checkbox" id="toggle_resizeBox"> Resize Box
-          </div>
           <div class="setting-item" data-toggle="center">
             <input type="checkbox" id="toggle_center"> Center
           </div>
           <div class="setting-item" data-toggle="groupText">
             <input type="checkbox" id="toggle_groupText"> Group TEXT
-          </div>
-          <div class="setting-item" data-toggle="checkBG">
-            <input type="checkbox" id="toggle_checkBG"> Check BG
-          </div>
-          <div class="setting-item" data-toggle="copyFX">
-            <input type="checkbox" id="toggle_copyFX"> Copy FX
-          </div>
-          <div class="setting-item" data-toggle="pasteFX">
-            <input type="checkbox" id="toggle_pasteFX"> Paste FX
           </div>
           <div class="setting-item" data-toggle="selectForm">
             <input type="checkbox" id="toggle_selectForm"> SelectForm
@@ -316,10 +273,6 @@
   <div class="color-presets">
     <div class="recent-colors"></div>
     <div class="color-grid" id="colorGrid"></div>
-    <div class="buttons-row">
-      <button class="fg-color">FG</button>
-      <button class="bg-color">BG</button>
-    </div>
   </div>
 </div>
 

@@ -110,38 +110,102 @@ function applyCase(n) {
 function splitEven(lines) {
     var layer = getLayer();
     if (!layer) return "NO_LAYER";
-    var words = splitWords(getText()), total = words.length;
-    var base = Math.floor(total / lines), extra = total % lines;
+    var words = splitWords(getText());
+    var total = words.length;
+    var base = Math.floor(total / lines);
+    var extra = total % lines;
+
+    // Tạo mảng pattern với tất cả dòng = base
     var pattern = [];
-    for (var i = 0; i < lines; i++) pattern.push(base + (i < extra ? 1 : 0));
+    for (var i = 0; i < lines; i++) {
+        pattern.push(base);
+    }
+
+    // Phân phối số chữ dư (extra) cho các dòng giữa
+    if (extra > 0) {
+        if (lines === 3) {
+            // 3 dòng: thêm hết extra vào dòng giữa (index 1)
+            pattern[1] += extra;
+        } else if (lines === 4) {
+            // 4 dòng: thêm vào 2 dòng giữa (index 1 và 2), mỗi dòng tối đa 1
+            if (extra >= 1) { pattern[1] += 1; extra--; }
+            if (extra >= 1) { pattern[2] += 1; extra--; }
+            // Nếu vẫn còn dư (rất hiếm với 4 dòng) thì thêm vào dòng đầu
+            if (extra > 0) { pattern[0] += extra; }
+        } else {
+            // Các trường hợp khác (2 dòng, 5+ dòng): giữ nguyên phân phối từ trên xuống
+            for (var i = 0; i < extra; i++) {
+                pattern[i] += 1;
+            }
+        }
+    }
+
     return applyPattern(pattern);
 }
 
+var _typoCoreResizeResult = "";
+
 function resizeBox() {
+    _typoCoreResizeResult = "";
+    try {
+        app.activeDocument.suspendHistory("TypoCore Resize Box", "_resizeBoxInternal()");
+        return _typoCoreResizeResult || "OK";
+    } catch(e) {
+        return "ERROR:" + e.message;
+    }
+}
+
+function _resizeBoxInternal() {
     var layer = getLayer();
-    if (!layer) return "NO_LAYER";
+    if (!layer) {
+        _typoCoreResizeResult = "NO_LAYER";
+        return;
+    }
     try {
         var doc = app.activeDocument;
         var t = layer.textItem;
         var wasPoint = (t.kind == TextType.POINTTEXT);
+        
+        // 1. Lưu vị trí hiện tại (tâm layer)
+        var oldBounds = layer.bounds;
+        var oldCenterX = (oldBounds[0].as("px") + oldBounds[2].as("px")) / 2;
+        var oldCenterY = (oldBounds[1].as("px") + oldBounds[3].as("px")) / 2;
+        
+        // 2. Nếu là point text thì chuyển sang paragraph text trước
         if (wasPoint) t.kind = TextType.PARAGRAPHTEXT;
-        var dup = layer.duplicate();
-        dup.visible = false;
-        var dt = dup.textItem;
-        dt.width  = new UnitValue(5000, "px");
-        dt.height = new UnitValue(5000, "px");
-        dup.rasterize(RasterizeType.ENTIRELAYER);
-        var b  = dup.bounds;
+        
+        // 3. Mở rộng khung rất lớn để toàn bộ chữ hiển thị
+        t.width  = new UnitValue(1500, "px");
+        t.height = new UnitValue(1500, "px");
+        
+        // 4. Chuyển sang point text để đo chính xác (không mất chữ vì đã mở rộng)
+        t.kind = TextType.POINTTEXT;
+        
+        // 5. Đo bounds thực tế
+        var b = layer.bounds;
         var rW = b[2].as("px") - b[0].as("px");
         var rH = b[3].as("px") - b[1].as("px");
-        dup.remove();
-        var padding = 20;
-        t.width  = new UnitValue(rW + padding * 5, "px");
-        t.height = new UnitValue(rH + padding + 200, "px");
-        app.refresh();
-        return "OK";
-    } catch(e) { return "ERROR:" + e.message; }
+        
+        // 6. Chuyển về paragraph text và set kích thước mới
+        t.kind = TextType.PARAGRAPHTEXT;
+        var padW = 80;
+        var padH = 22;
+        t.width  = new UnitValue(rW + padW, "px");
+        t.height = new UnitValue(rH + padH, "px");
+        
+        // 7. Đưa layer về đúng vị trí cũ
+        var newBounds = layer.bounds;
+        var newCenterX = (newBounds[0].as("px") + newBounds[2].as("px")) / 2;
+        var newCenterY = (newBounds[1].as("px") + newBounds[3].as("px")) / 2;
+        layer.translate(new UnitValue(oldCenterX - newCenterX, "px"), new UnitValue(oldCenterY - newCenterY, "px"));
+        
+        _typoCoreResizeResult = "OK";
+    } catch(e) {
+        _typoCoreResizeResult = "ERROR:" + e.message;
+    }
 }
+
+
 
 function alignCenter() {
     var doc = app.activeDocument;
@@ -197,33 +261,34 @@ function _doApplySize(layer, applySize, applyLead) {
 function applyNow(dSize, dLead) {
     var layer = getLayer();
     if (!layer) return "NO_LAYER";
-    var result = _doApplySize(layer, dSize, dLead);
-    app.refresh();
-    return result;
-}
-
-var _copiedFX    = null;
-var _copiedColor = null;
-
-function copyFX() {
-    if (!app.documents.length) return "NO_DOC";
     try {
+        var t = layer.textItem;
+        var curSize = t.size.as("pt");
+        var curLead = 0;
+        try { curLead = t.leading.as("pt"); } catch(e) {}
+        if (curLead <= 0) curLead = curSize * 1.2;
+
+        var newSize = curSize + dSize;
+        var newLead = curLead + dLead;
+        if (newSize < 1) newSize = 1;
+        if (newLead < 0) newLead = 0;
+
+        var desc = new ActionDescriptor();
         var ref = new ActionReference();
-        ref.putEnumerated(charIDToTypeID("Lyr "), charIDToTypeID("Ordn"), charIDToTypeID("Trgt"));
-        var desc  = executeActionGet(ref);
-        var fxKey = stringIDToTypeID("layerEffects");
-        if (!desc.hasKey(fxKey)) return "NO_FX";
-        _copiedFX = desc.getObjectValue(fxKey);
-        _copiedColor = null;
-        try {
-            var layer = app.activeDocument.activeLayer;
-            if (layer.kind == LayerKind.TEXT) {
-                var c = layer.textItem.color.rgb;
-                _copiedColor = { r: c.red, g: c.green, b: c.blue };
-            }
-        } catch(ec) {}
+        ref.putProperty(charIDToTypeID("Prpr"), charIDToTypeID("TxtS"));
+        ref.putEnumerated(charIDToTypeID("TxLr"), charIDToTypeID("Ordn"), charIDToTypeID("Trgt"));
+        desc.putReference(charIDToTypeID("null"), ref);
+
+        var textStyle = new ActionDescriptor();
+        textStyle.putUnitDouble(charIDToTypeID("Sz  "), charIDToTypeID("Pts "), newSize);
+        textStyle.putUnitDouble(charIDToTypeID("Ldng"), charIDToTypeID("Pts "), newLead);
+        desc.putObject(charIDToTypeID("T   "), charIDToTypeID("TxtS"), textStyle);
+
+        executeAction(charIDToTypeID("setd"), desc, DialogModes.NO);
         return "OK";
-    } catch(e) { return "ERROR:" + e.message; }
+    } catch(e) {
+        return "ERROR:" + e.message;
+    }
 }
 
 function selectLayerByID(id) {
@@ -638,7 +703,7 @@ function getFXData() {
         } catch(e) {}
 
         // Outer Glow
-        try {
+           try {
             if (fx.hasKey(stringIDToTypeID("outerGlow"))) {
                 var og = fx.getObjectValue(stringIDToTypeID("outerGlow"));
                 out.outerGlow = {
@@ -648,20 +713,17 @@ function getFXData() {
                     chokeMatte: safeGetUnitDouble(og, "chokeMatte"),
                     color: getColorFromDesc(og.getObjectValue(stringIDToTypeID("color")))
                 };
+            } else {
+                // Cung cấp giá trị mặc định (giống index.html)
+                out.outerGlow = {
+                    enabled: false,
+                    opacity: 100,
+                    blur: 20,
+                    chokeMatte: 5,
+                    color: { r: 255, g: 255, b: 255 }
+                };
             }
         } catch(e) {}
-		// Lấy màu chữ của text layer (nếu là text)
-try {
-    var layer = getLayer();
-    if (layer && layer.kind == LayerKind.TEXT) {
-        var rgb = layer.textItem.color.rgb;
-        out.textColor = {
-            r: Math.round(rgb.red),
-            g: Math.round(rgb.green),
-            b: Math.round(rgb.blue)
-        };
-    }
-} catch(e) {}
         return JSON.stringify(out);
     } catch(e) { return "ERROR:" + e.message; }
 }
@@ -934,3 +996,4 @@ function selectLayersByIDs(ids) {
         executeAction(charIDToTypeID("slct"), desc, DialogModes.NO);
     }
 }
+
