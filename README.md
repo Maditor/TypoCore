@@ -97,6 +97,7 @@ https://drive.google.com/drive/folders/1giaDXBR-Qn6iGMxBwE5yD-6j3jMYjIJo?usp=dri
 ### 🔹 Tùy chỉnh panel
 - Ẩn / hiện các chức năng không dùng đến
 - Thay đổi Load thoại Tự động - Thủ Công
+- Di chuyển vị trí các công cụ
 ---
 TypoCore By Maditor
 
