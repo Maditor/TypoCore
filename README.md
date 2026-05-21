@@ -1,4 +1,43 @@
 
+### ✨UPDATE TYPOCORE V1.3.1
+
+1. Tích hợp Resize Box vào Quick Layout (Khi chọn kiểu cách dòng sẽ tự điều chỉnh lại khung của Layer Text)
+2. Lượt bớt những kiểu cách dòng trùng nhau trong Quick Layout
+3. Tăng tốc độ Resize Box
+4. Tăng tốc độ của Size-Leading (Mượn ý tưởng từ TypeR)
+5. Sửa Logic của Split Even(phù hợp với thoại vuông và chênh lệch chiều dài từng chữ không quá lớn)
+6. Xoá những chức năng thừa (Copy/Paste FX, Resize Box, Check)
+- Các bạn nhớ sao chép lại Font đang dùng trong Quick Layout để có thể nhập lại nhanh hơn
+---
+- TypoCore sẽ tập trung phát triển 2 chức năng chính là FX Studio và Quick Layout.
+- Những chức năng trong cụm action sẽ được tích hợp hoặc lượt bỏ để tối ưu giao diện và chức năng chính
+---
+- Vì lý do cá nhân nên sẽ dừng ra bản cập nhật trong khoảng hơn 1 tháng sắp tới, cảm ơn các bạn đã quan tâm, nếu thấy bộ Panel này hữu ích hãy giúp tôi share nó đến nhiều người hơn.
+---
+### 🔹 Hướng Dẫn Cài Đặt
+
+- Tải và giải nén file .zip  
+- Mở thư mục vừa giải nén  
+- Tắt Photoshop (nếu đang mở)  
+- Chạy file `Install_win.bat`  
+- Nhấn Enter và chờ quá trình cài đặt hoàn tất  
+- Nhấn Enter lần nữa để thoát  
+
+- Mở Photoshop  
+→ Vào: **Window → Extensions → TypoCore**
+
+### 🔹 Hướng Dẫn Sử Dụng
+
+https://drive.google.com/drive/folders/1giaDXBR-Qn6iGMxBwE5yD-6j3jMYjIJo?usp=drive_link
+
+---
+
+### 🔹 Yêu Cầu
+- Photoshop từ CC 2018 trở lên
+- Sử dụng cùng với Typer Tool hoặc TypeR để đạt hiệu suất cao hơn
+
+---
+
 ### ✨UPDATE TYPOCORE V1.3
 1. Mở rộng dữ liệu Quick Layout(chưa hoàn thiện vẫn còn cần nhiều nâng cấp)
 2. Sửa lỗi nút bị tối màu khi sử dụng(bỏ flash xanh đỏ báo hiệu chức năng được hoàn thành không)
@@ -26,29 +65,7 @@
 
 - Dự Kiến Bản Cập Nhật V1.3: Mở rộng dữ liệu Quick Layout để áp dụng được cho nhiều trường hợp hơn.
 ---
-### 🔹 Hướng Dẫn Cài Đặt
 
-- Tải và giải nén file .zip  
-- Mở thư mục vừa giải nén  
-- Tắt Photoshop (nếu đang mở)  
-- Chạy file `Install_win.bat`  
-- Nhấn Enter và chờ quá trình cài đặt hoàn tất  
-- Nhấn Enter lần nữa để thoát  
-
-- Mở Photoshop  
-→ Vào: **Window → Extensions → TypoCore**
-
-### 🔹 Hướng Dẫn Sử Dụng
-
-https://drive.google.com/drive/folders/1giaDXBR-Qn6iGMxBwE5yD-6j3jMYjIJo?usp=drive_link
-
----
-
-### 🔹 Yêu Cầu
-- Photoshop từ CC 2018 trở lên
-- Sử dụng cùng với Typer Tool để đạt hiệu suất cao hơn
-
----
 ## ✨ Tính năng của TypoCore
 
 
