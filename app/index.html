@@ -196,6 +196,12 @@
   <button data-tool="groupText" onclick="runBtn('groupTextLayers()', this)">Group</button>
   <button data-tool="center"    onclick="runBtn('alignCenter()', this)">Center</button>
 </div>
+
+<div class="action-row" id="row-copypaste">
+  <button data-tool="copyFX"  id="btnCopyFX" onclick="doCopyFX()">Copy FX</button>
+  <button data-tool="pasteFX" id="btnPasteFX" onclick="doPasteFX()" disabled>Paste FX</button>
+</div>
+
 <div class="action-row" id="row-select-logo">
   <button data-tool="selectForm" onclick="runBtn('selectForm()', this)">Select</button>
   <button data-tool="logo"       id="btnLogo" onclick="runBtn('placeLogo()', this)">Logo</button>
@@ -213,10 +219,12 @@
       <div class="setting-wrapper">
         <button class="setting-btn" id="settingBtn">Setting</button>
         <div class="setting-popup" id="settingPopup">
-
         <div class="setting-item" data-action="chooseLogo">🗁 Choose Logo</div>
         <div class="setting-item" data-action="pasteAllOpened">⎘ Paste Logo to All Opened</div>
         <div class="setting-separator"></div>
+	<div class="setting-item" data-toggle="multiplePaste">
+        <input type="checkbox" id="toggle_multiplePaste"> Multiple Paste FX
+        </div>
         <div class="setting-item" data-toggle="manualLoadText">
           <input type="checkbox" id="toggle_manualLoadText"> Manual Load Text
         </div>
@@ -247,21 +255,34 @@
   <div class="setting-item" data-toggle="splitEven">
     <input type="checkbox" id="toggle_splitEven"> Split Even
   </div>
-	  <div class="setting-item" data-toggle="actionsSection">
-    <input type="checkbox" id="toggle_actionsSection"> Actions
+<!-- Actions toggle + expand -->
+<div class="setting-item" style="justify-content: space-between; padding-right: 8px;">
+  <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+    <input type="checkbox" id="toggle_actionsSection" data-toggle="actionsSection">
+    <span>Actions</span>
+  </label>
+  <span id="actionsSubArrow" style="font-size: 10px; cursor: pointer; user-select: none;">▼</span>
 </div>
-          <div class="setting-item" data-toggle="center">
-            <input type="checkbox" id="toggle_center"> Center
-          </div>
-          <div class="setting-item" data-toggle="groupText">
-            <input type="checkbox" id="toggle_groupText"> Group TEXT
-          </div>
-          <div class="setting-item" data-toggle="selectForm">
-            <input type="checkbox" id="toggle_selectForm"> SelectForm
-          </div>
-          <div class="setting-item" data-toggle="logo">
-            <input type="checkbox" id="toggle_logo"> Logo
-          </div>
+<div id="actionsSub" style="display: none;">
+  <div class="setting-item" data-toggle="center" style="padding-left: 24px;">
+    <input type="checkbox" id="toggle_center"> Center
+  </div>
+  <div class="setting-item" data-toggle="groupText" style="padding-left: 24px;">
+    <input type="checkbox" id="toggle_groupText"> Group TEXT
+  </div>
+  <div class="setting-item" data-toggle="copyFX" style="padding-left: 24px;">
+    <input type="checkbox" id="toggle_copyFX"> Copy FX
+  </div>
+  <div class="setting-item" data-toggle="pasteFX" style="padding-left: 24px;">
+    <input type="checkbox" id="toggle_pasteFX"> Paste FX
+  </div>
+  <div class="setting-item" data-toggle="selectForm" style="padding-left: 24px;">
+    <input type="checkbox" id="toggle_selectForm"> SelectForm
+  </div>
+  <div class="setting-item" data-toggle="logo" style="padding-left: 24px;">
+    <input type="checkbox" id="toggle_logo"> Logo
+  </div>
+</div>
         </div>
       </div>
     </div>

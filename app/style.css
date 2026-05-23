@@ -1454,3 +1454,40 @@ body::-webkit-scrollbar-thumb:hover,
     width: 36px;
     height: 28px;
 }
+/* ============================================================
+   FIX: FX STUDIO CO GIÃN CHIỀU NGANG
+   ============================================================ */
+#fxOverlay,
+#fxPopup {
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box;
+}
+
+.fx-scroll {
+    width: 100% !important;
+    overflow-x: hidden !important;
+}
+
+.fx-section,
+.fx-section-header,
+.fx-row,
+.fx-angle-row {
+    width: 100% !important;
+    box-sizing: border-box;
+}
+
+.fx-section-header .fx-swatches {
+    flex-shrink: 0;
+}
+
+.fx-row input[type="range"] {
+    flex: 1;
+    min-width: 40px;
+}
+
+.fx-row-val,
+#gradientAngleInput {
+    width: 42px !important;
+    flex-shrink: 0;
+}

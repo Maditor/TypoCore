@@ -112,6 +112,17 @@ function flash(btn, result) {
     setTimeout(function() { btn.classList.remove("flash-ok", "flash-err"); }, 500);
 }
 
+function doCopyFX() {
+    var btn = document.getElementById("btnCopyFX");
+    _exec('copyFX()', btn, function(res) { if (res === "OK") document.getElementById("btnPasteFX").disabled = false; });
+}
+function doPasteFX() {
+    var btn = document.getElementById("btnPasteFX");
+    _exec('pasteFX()', btn, function(res) {
+        if (res === "OK") { var vis = loadVis(); if (!vis.multiplePaste) btn.disabled = true; }
+    });
+}
+
 var STORAGE_KEY = "typoCoreToolVisibility";
 var TOOL_DEFS = {
     quickLayout: { sectionId: "section-preview", isSection: true },
@@ -121,15 +132,22 @@ var TOOL_DEFS = {
     actionsSection: { sectionId: "section-actions", isSection: true },
     center:      { dataTool: "center",    isSection: false },
     groupText:   { dataTool: "groupText", isSection: false },
+    copyFX:      { dataTool: "copyFX",    isSection: false },
+    pasteFX:     { dataTool: "pasteFX",   isSection: false },
     selectForm:  { dataTool: "selectForm", isSection: false },
     logo:        { dataTool: "logo",       isSection: false },
-    manualLoadText: { dataTool: "nonexistent2", isSection: false }
+    manualLoadText: { dataTool: "nonexistent2", isSection: false },
+    multiplePaste: { dataTool: "nonexistent", isSection: false },
 };
 
 function loadVis() {
     try {
         var raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) { var data = JSON.parse(raw);  return data; }
+        if (raw) {
+            var data = JSON.parse(raw);
+            if (typeof data.multiplePaste === "undefined") data.multiplePaste = false;
+            return data;
+        }
     } catch(e) {}
     var vis = {};
     for (var k in TOOL_DEFS) vis[k] = true;
@@ -328,7 +346,7 @@ function restoreLayout() {
         actionGrid.innerHTML = '';
         var rowsToCreate = [];
         if (raw && layout.actionButtons && layout.actionButtons.length) rowsToCreate = layout.actionButtons;
-        else rowsToCreate = [['groupText', 'center'], ['selectForm', 'logo']];
+        else rowsToCreate = [['groupText', 'center'], ['copyFX', 'pasteFX'], ['selectForm', 'logo']];
         rowsToCreate.forEach(function(tools) {
             var row = document.createElement('div'); row.className = 'action-row';
             tools.forEach(function(tool) { var btn = btnMap[tool]; if (btn) row.appendChild(btn); });
@@ -355,7 +373,7 @@ function resetLayout() {
     var btnMap = {};
     allBtns.forEach(function(btn) { btnMap[btn.getAttribute('data-tool')] = btn; btn.style.display = ''; });
     actionGrid.innerHTML = '';
-    var defaultRows = [['groupText', 'center'], ['selectForm', 'logo']];
+    var defaultRows = [['groupText', 'center'], ['copyFX', 'pasteFX'], ['selectForm', 'logo']];
     defaultRows.forEach(function(tools) {
         var row = document.createElement('div'); row.className = 'action-row';
         tools.forEach(function(tool) { if (btnMap[tool]) row.appendChild(btnMap[tool]); });
@@ -366,7 +384,7 @@ function resetLayout() {
 }
 function createDefaultActionRows() {
     var actionGrid = document.querySelector('.action-grid'); actionGrid.innerHTML = '';
-    var defaultRows = [['groupText', 'center'], ['selectForm', 'logo']];
+    var defaultRows = [['groupText', 'center'], ['copyFX', 'pasteFX'], ['selectForm', 'logo']];
     defaultRows.forEach(function(tools) {
         var row = document.createElement('div'); row.className = 'action-row';
         tools.forEach(function(tool) { var btn = document.querySelector('[data-tool="' + tool + '"]'); if (btn) row.appendChild(btn); });
@@ -382,13 +400,17 @@ function setupSettingPopup() {
     var layoutManagerArrow = document.getElementById("layoutManagerArrow");
     var toolManagerSub = document.getElementById("toolManagerSub");
     var toolManagerArrow = document.getElementById("toolManagerArrow");
-    function closeSettingPopup() {
-        popup.classList.remove("show");
-        if (layoutManagerSub) layoutManagerSub.style.display = "none";
-        if (layoutManagerArrow) layoutManagerArrow.textContent = "▼";
-        if (toolManagerSub) toolManagerSub.style.display = "none";
-        if (toolManagerArrow) toolManagerArrow.textContent = "▼";
-    }
+function closeSettingPopup() {
+    popup.classList.remove("show");
+    if (layoutManagerSub) layoutManagerSub.style.display = "none";
+    if (layoutManagerArrow) layoutManagerArrow.textContent = "▼";
+    if (toolManagerSub) toolManagerSub.style.display = "none";
+    if (toolManagerArrow) toolManagerArrow.textContent = "▼";
+    var actionsSub = document.getElementById("actionsSub");
+    var actionsArrow = document.getElementById("actionsSubArrow");
+    if (actionsSub) actionsSub.style.display = "none";
+    if (actionsArrow) actionsArrow.textContent = "▼";
+}
     function openSettingPopup() {
         if (layoutManagerSub) layoutManagerSub.style.display = "none";
         if (layoutManagerArrow) layoutManagerArrow.textContent = "▼";
@@ -442,6 +464,22 @@ function setupSettingPopup() {
     var toolToggle = document.getElementById("toolManagerToggle");
     if (toolToggle) {
         toolToggle.addEventListener("click", function(e) { e.stopPropagation(); if (toolManagerSub.style.display === "none") { toolManagerSub.style.display = "block"; toolManagerArrow.textContent = "▲"; } else { toolManagerSub.style.display = "none"; toolManagerArrow.textContent = "▼"; } });
+    }
+
+    // Toggle Actions sub-menu
+    var actionsArrow = document.getElementById("actionsSubArrow");
+    if (actionsArrow) {
+        actionsArrow.addEventListener("click", function(e) {
+            e.stopPropagation();
+            var sub = document.getElementById("actionsSub");
+            if (sub.style.display === "none" || sub.style.display === "") {
+                sub.style.display = "block";
+                this.textContent = "▲";
+            } else {
+                sub.style.display = "none";
+                this.textContent = "▼";
+            }
+        });
     }
     updateCheckboxes(loadVis());
 }

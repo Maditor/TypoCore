@@ -658,76 +658,100 @@ function getColorFromDesc(desc) {
 function getFXData() {
     try {
         if (!app.documents.length) return "NO_DOC";
+        var out = {};
+
+        // Lấy màu chữ (text color) – luôn thực hiện, không phụ thuộc vào layer effects
+        try {
+            var layer = getLayer();
+            if (layer && layer.kind == LayerKind.TEXT) {
+                var rgb = layer.textItem.color.rgb;
+                out.textColor = {
+                    r: Math.round(rgb.red),
+                    g: Math.round(rgb.green),
+                    b: Math.round(rgb.blue)
+                };
+            }
+        } catch(e) {}
+
+        // Lấy layer effects (nếu có)
         var ref = new ActionReference();
         ref.putEnumerated(charIDToTypeID("Lyr "), charIDToTypeID("Ordn"), charIDToTypeID("Trgt"));
         var desc = executeActionGet(ref);
         var fxKey = stringIDToTypeID("layerEffects");
-        if (!desc.hasKey(fxKey)) return "NO_FX";
-        var fx = desc.getObjectValue(fxKey);
-        var out = {};
+        if (desc.hasKey(fxKey)) {
+            var fx = desc.getObjectValue(fxKey);
 
-        // Gradient Fill
-        try {
-            if (fx.hasKey(stringIDToTypeID("gradientFill"))) {
-                var gf = fx.getObjectValue(stringIDToTypeID("gradientFill"));
-                var gradient = gf.getObjectValue(stringIDToTypeID("gradient"));
-                var colors = [];
-                if (gradient.hasKey(stringIDToTypeID("colors"))) {
-                    var colorList = gradient.getList(stringIDToTypeID("colors"));
-                    for (var i = 0; i < colorList.count; i++) {
-                        var stop = colorList.getObjectValue(i);
-                        colors.push(getColorFromDesc(stop.getObjectValue(stringIDToTypeID("color"))));
+            // Gradient Fill
+            try {
+                if (fx.hasKey(stringIDToTypeID("gradientFill"))) {
+                    var gf = fx.getObjectValue(stringIDToTypeID("gradientFill"));
+                    var gradient = gf.getObjectValue(stringIDToTypeID("gradient"));
+                    var colors = [];
+                    if (gradient.hasKey(stringIDToTypeID("colors"))) {
+                        var colorList = gradient.getList(stringIDToTypeID("colors"));
+                        for (var i = 0; i < colorList.count; i++) {
+                            var stop = colorList.getObjectValue(i);
+                            colors.push(getColorFromDesc(stop.getObjectValue(stringIDToTypeID("color"))));
+                        }
                     }
+                    var gradType = "linear";
+                    try { gradType = typeIDToStringID(gf.getEnumerationValue(stringIDToTypeID("type"))); } catch(e) {}
+                    out.gradientFill = {
+                        enabled: gf.getBoolean(stringIDToTypeID("enabled")),
+                        angle: safeGetUnitDouble(gf, "angle"),
+                        type: gradType,
+                        colors: colors
+                    };
                 }
-                var gradType = "linear";
-                try { gradType = typeIDToStringID(gf.getEnumerationValue(stringIDToTypeID("type"))); } catch(e) {}
-                out.gradientFill = {
-                    enabled: gf.getBoolean(stringIDToTypeID("enabled")),
-                    angle: safeGetUnitDouble(gf, "angle"),
-                    type: gradType,
-                    colors: colors
-                };
-            }
-        } catch(e) {}
+            } catch(e) {}
 
-        // Stroke - CHỈ ĐỌC 1 STROKE (đối tượng đơn)
-        try {
-            if (fx.hasKey(stringIDToTypeID("frameFX"))) {
-                var st = fx.getObjectValue(stringIDToTypeID("frameFX"));
-                out.strokes = [{
-                    enabled: st.getBoolean(stringIDToTypeID("enabled")),
-                    size: safeGetUnitDouble(st, "size"),
-                    color: getColorFromDesc(st.getObjectValue(stringIDToTypeID("color")))
-                }];
-            }
-        } catch(e) {}
+            // Stroke
+            try {
+                if (fx.hasKey(stringIDToTypeID("frameFX"))) {
+                    var st = fx.getObjectValue(stringIDToTypeID("frameFX"));
+                    out.strokes = [{
+                        enabled: st.getBoolean(stringIDToTypeID("enabled")),
+                        size: safeGetUnitDouble(st, "size"),
+                        color: getColorFromDesc(st.getObjectValue(stringIDToTypeID("color")))
+                    }];
+                }
+            } catch(e) {}
 
-        // Outer Glow
-           try {
-            if (fx.hasKey(stringIDToTypeID("outerGlow"))) {
-                var og = fx.getObjectValue(stringIDToTypeID("outerGlow"));
-                out.outerGlow = {
-                    enabled: og.getBoolean(stringIDToTypeID("enabled")),
-                    opacity: safeGetUnitDouble(og, "opacity"),
-                    blur: safeGetUnitDouble(og, "blur"),
-                    chokeMatte: safeGetUnitDouble(og, "chokeMatte"),
-                    color: getColorFromDesc(og.getObjectValue(stringIDToTypeID("color")))
-                };
-            } else {
-                // Cung cấp giá trị mặc định (giống index.html)
-                out.outerGlow = {
-                    enabled: false,
-                    opacity: 100,
-                    blur: 20,
-                    chokeMatte: 5,
-                    color: { r: 255, g: 255, b: 255 }
-                };
-            }
-        } catch(e) {}
+            // Outer Glow
+            try {
+                if (fx.hasKey(stringIDToTypeID("outerGlow"))) {
+                    var og = fx.getObjectValue(stringIDToTypeID("outerGlow"));
+                    out.outerGlow = {
+                        enabled: og.getBoolean(stringIDToTypeID("enabled")),
+                        opacity: safeGetUnitDouble(og, "opacity"),
+                        blur: safeGetUnitDouble(og, "blur"),
+                        chokeMatte: safeGetUnitDouble(og, "chokeMatte"),
+                        color: getColorFromDesc(og.getObjectValue(stringIDToTypeID("color")))
+                    };
+                } else {
+                    out.outerGlow = {
+                        enabled: false,
+                        opacity: 100,
+                        blur: 20,
+                        chokeMatte: 5,
+                        color: { r: 255, g: 255, b: 255 }
+                    };
+                }
+            } catch(e) {}
+        } else {
+            // Không có layer effects → vẫn cung cấp outerGlow mặc định
+            out.outerGlow = {
+                enabled: false,
+                opacity: 100,
+                blur: 20,
+                chokeMatte: 5,
+                color: { r: 255, g: 255, b: 255 }
+            };
+        }
+
         return JSON.stringify(out);
     } catch(e) { return "ERROR:" + e.message; }
 }
-
 
 function getForegroundColor() {
     try {
@@ -997,3 +1021,39 @@ function selectLayersByIDs(ids) {
     }
 }
 
+// ========== COPY FX ==========
+var _copiedFX = null;
+var _copiedColor = null;
+
+function getCurrentLayerEffects() {
+    try {
+        if (!app.documents.length) return null;
+        var ref = new ActionReference();
+        ref.putEnumerated(charIDToTypeID("Lyr "), charIDToTypeID("Ordn"), charIDToTypeID("Trgt"));
+        var desc = executeActionGet(ref);
+        var fxKey = stringIDToTypeID("layerEffects");
+        if (desc.hasKey(fxKey)) {
+            return desc.getObjectValue(fxKey);
+        }
+        return null;
+    } catch(e) { return null; }
+}
+
+function copyFX() {
+    if (!app.documents.length) return "NO_DOC";
+    var fx = getCurrentLayerEffects();
+    if (!fx) return "NO_FX";
+    _copiedFX = fx;
+    
+    // Lưu màu chữ nếu là text layer
+    var layer = getLayer();
+    if (layer && layer.kind == LayerKind.TEXT) {
+        try {
+            var rgb = layer.textItem.color.rgb;
+            _copiedColor = { r: Math.round(rgb.red), g: Math.round(rgb.green), b: Math.round(rgb.blue) };
+        } catch(e) { _copiedColor = null; }
+    } else {
+        _copiedColor = null;
+    }
+    return "OK";
+}
