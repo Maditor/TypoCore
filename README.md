@@ -1,12 +1,14 @@
 
-### ✨UPDATE TYPOCORE V1.3.1
+### ✨UPDATE TYPOCORE V1.3.1 Fixed
 
 1. Tích hợp Resize Box vào Quick Layout (Khi chọn kiểu cách dòng sẽ tự điều chỉnh lại khung của Layer Text)
 2. Lượt bớt những kiểu cách dòng trùng nhau trong Quick Layout
 3. Tăng tốc độ Resize Box
 4. Tăng tốc độ của Size-Leading (Mượn ý tưởng từ TypeR)
 5. Sửa Logic của Split Even(phù hợp với thoại vuông và chênh lệch chiều dài từng chữ không quá lớn)
-6. Xoá những chức năng thừa (Copy/Paste FX, Resize Box, Check, nút FG BG trong bảng màu)
+6. Xoá những chức năng thừa (Resize Box, Check, nút FG BG trong bảng màu)
+ 
+- Do có người dùng yêu cầu nền chức năng Copy/Paste FX được thêm vào lại
 - Các bạn nhớ sao chép lại Font đang dùng trong Quick Layout để có thể nhập lại nhanh hơn
 ---
 - TypoCore sẽ tập trung phát triển 2 chức năng chính là FX Studio và Quick Layout.
