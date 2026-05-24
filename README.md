@@ -8,7 +8,7 @@
 5. Sửa Logic của Split Even(phù hợp với thoại vuông và chênh lệch chiều dài từng chữ không quá lớn)
 6. Xoá những chức năng thừa (Resize Box, Check, nút FG BG trong bảng màu)
  
-- Do có người dùng yêu cầu nền chức năng Copy/Paste FX được thêm vào lại
+- Do có người dùng yêu cầu nên chức năng Copy/Paste FX được thêm vào lại
 - Các bạn nhớ sao chép lại Font đang dùng trong Quick Layout để có thể nhập lại nhanh hơn
 ---
 - TypoCore sẽ tập trung phát triển 2 chức năng chính là FX Studio và Quick Layout.
