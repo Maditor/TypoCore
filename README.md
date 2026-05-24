@@ -39,6 +39,18 @@ https://drive.google.com/drive/folders/1giaDXBR-Qn6iGMxBwE5yD-6j3jMYjIJo?usp=dri
 - Sử dụng cùng với Typer Tool hoặc TypeR để đạt hiệu suất cao hơn
 
 ---
+### 🔹 Ảnh Xem Trước
+<table>
+  <tr>
+    <td><img width="197" height="997" alt="image" src="https://github.com/user-attachments/assets/72b01c51-d51b-455f-830c-d1e984b3bebc" /></td>
+    <td><img width="200" height="997" alt="image" src="https://github.com/user-attachments/assets/d8fc5179-4141-4f25-85c4-47da4fbb6b2e" /></td>
+    <td><img width="197" height="993" alt="image" src="https://github.com/user-attachments/assets/c71677f2-084b-4c5f-9251-20118928e7f5" /></td>
+    <td><img width="205" height="999" alt="image" src="https://github.com/user-attachments/assets/450b62f6-3696-451c-8bb8-0ad1adda2563" /></td>
+    <td><img width="204" height="996" alt="image" src="https://github.com/user-attachments/assets/1a5d64ee-f2bb-41f9-b793-6104fd816eac" /></td>
+  </tr>
+</table>
+
+---
 
 ### ✨UPDATE TYPOCORE V1.3
 1. Mở rộng dữ liệu Quick Layout(chưa hoàn thiện vẫn còn cần nhiều nâng cấp)
@@ -109,17 +121,7 @@ This project was built with the assistance of AI tools.
 TypoCore is designed to work alongside Typer Tool, focusing on layout, spacing, and visual refinement to complete the typesetting workflow.
 
 
----
 
-<table>
-  <tr>
-    <td><img width="197" height="997" alt="image" src="https://github.com/user-attachments/assets/72b01c51-d51b-455f-830c-d1e984b3bebc" /></td>
-    <td><img width="200" height="997" alt="image" src="https://github.com/user-attachments/assets/d8fc5179-4141-4f25-85c4-47da4fbb6b2e" /></td>
-    <td><img width="197" height="993" alt="image" src="https://github.com/user-attachments/assets/c71677f2-084b-4c5f-9251-20118928e7f5" /></td>
-    <td><img width="205" height="999" alt="image" src="https://github.com/user-attachments/assets/450b62f6-3696-451c-8bb8-0ad1adda2563" /></td>
-    <td><img width="204" height="996" alt="image" src="https://github.com/user-attachments/assets/1a5d64ee-f2bb-41f9-b793-6104fd816eac" /></td>
-  </tr>
-</table>
 
 
 
