@@ -91,6 +91,7 @@ https://drive.google.com/drive/folders/1giaDXBR-Qn6iGMxBwE5yD-6j3jMYjIJo?usp=dri
 ### 🔹 Công cụ nhanh
 - Group/Center
 - Seclect/Logo
+- Copy/Paste FX
 
 ### 🔹 Logo Tool
 - Chọn logo trong phần setting  
