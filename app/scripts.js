@@ -6,6 +6,7 @@ function on(id, event, handler) {
 }
 
 var _busy = false;
+var _originalPasteDisabled = true;
 var _queue = [];
 var MAX_QUEUE = 1;
 var _currentExpr = '';
@@ -28,7 +29,7 @@ var _patternData = {
     1:{4:[2,2],6:[2,2,2],7:[2,3,2],8:[2,4,2],10:[2,3,3,2],11:[2,3,3,3],13:[2,4,4,3],14:[3,4,4,3],15:[4,4,4,3],17:[2,4,5,4,2],20:[3,5,5,4,3],24:[3,4,5,5,4,3],30:[4,5,7,6,5,3],18:[2,4,6,4,2], 19:[2,4,7,4,2], 21:[2,5,7,5,2], 22:[2,5,8,5,2], 23:[2,5,9,5,2], 25:[2,6,9,6,2], 26:[2,6,10,6,2], 27:[2,7,9,7,2], 28:[2,7,10,7,2], 29:[2,8,9,8,2], 31:[2,4,6,7,6,4,2], 32:[2,4,6,8,6,4,2], 33:[2,4,7,7,7,4,2], 34:[2,4,7,8,7,4,2], 35:[2,4,7,9,7,4,2], 36:[2,4,8,8,8,4,2], 37:[2,4,8,9,8,4,2], 38:[2,4,8,10,8,4,2], 39:[2,5,8,9,8,5,2], 40:[2,5,8,10,8,5,2]},
     2:{4:[2,2],6:[3,3],7:[4,3],8:[2,3,3],10:[3,4,3],11:[4,4,3],13:[3,6,4],14:[2,4,4,3],15:[5,6,5],17:[3,5,6,3],20:[4,5,6,5],24:[4,6,6,5,3],30:[4,7,8,7,4],18:[3,4,4,4,3], 19:[3,4,5,4,3], 21:[3,5,5,5,3], 22:[3,5,6,5,3], 23:[3,6,5,6,3], 25:[3,6,7,6,3], 26:[3,6,8,6,3], 27:[3,7,7,7,3], 28:[3,7,8,7,3], 29:[3,7,9,7,3], 31:[4,7,9,7,4], 32:[4,7,10,7,4], 33:[4,8,9,8,4], 34:[4,8,10,8,4], 35:[3,5,6,7,6,5,3], 36:[3,5,6,8,6,5,3], 37:[3,5,7,7,7,5,3], 38:[3,5,7,8,7,5,3], 39:[3,5,8,8,8,5,3], 40:[3,5,8,9,8,5,3]},
     3:{4:[1,2,1],6:[1,2,3],7:[1,2,3,1],8:[1,2,3,2],10:[1,2,4,3],11:[1,2,3,3,2],13:[2,4,4,3],14:[2,5,4,3],15:[2,4,5,4],17:[2,4,5,4,2],18:[2,4,5,5,2],19:[2,4,5,5,2],20:[2,4,6,4,4],21:[2,4,6,5,4],23:[2,4,6,5,4,2],24:[2,4,6,5,4,3],25:[3,6,8,6,4],27:[2,4,6,6,5,4],29:[4,7,8,6,4],30:[2,5,7,6,6,4],31:[2,4,6,6,5,4,4],33:[3,6,8,6,6,5],22:[2,4,5,5,4,2], 26:[2,4,7,7,4,2], 28:[2,4,7,9,4,2], 32:[2,4,6,8,6,4,2], 34:[2,4,7,8,7,4,2], 35:[2,4,7,9,7,4,2], 36:[2,4,8,8,8,4,2], 37:[2,4,8,9,8,4,2], 38:[2,4,8,10,8,4,2], 39:[2,5,8,9,8,5,2], 40:[2,5,8,10,8,5,2]},
-    4:{4:[2,2],6:[2,4],7:[2,2,3],8:[2,3,3],10:[2,4,4],11:[2,4,3,2],13:[3,6,4],14:[3,7,4],15:[2,5,6,2],18:[3,5,6,4],17:[2,5,6,4],20:[3,7,6,4],21:[3,6,7,5],23:[3,6,7,5,2],24:[3,7,6,5,3],25:[2,4,6,6,4,3],27:[3,6,8,6,4],29:[3,5,7,5,5,4],30:[3,7,7,7,6],31:[3,7,8,7,6],33:[4,8,8,7,7],19:[3,4,5,4,3], 22:[3,5,6,5,3], 26:[3,6,8,6,3], 28:[3,7,8,7,3], 32:[3,5,8,8,5,3], 34:[3,5,9,9,5,3], 35:[3,5,9,10,5,3], 36:[3,6,9,9,6,3], 37:[3,6,10,9,6,3], 38:[3,6,10,10,6,3], 39:[3,7,9,10,7,3], 40:[3,7,10,10,7,3]},
+    4:{4:[2,2],6:[2,4],7:[2,2,3],8:[2,3,3],9:[2,3,3,1],10:[2,4,4],11:[2,4,3,2],13:[3,6,4],14:[3,7,4],15:[2,5,6,2],18:[3,5,6,4],17:[2,5,6,4],20:[3,7,6,4],21:[3,6,7,5],23:[3,6,7,5,2],24:[3,7,6,5,3],25:[2,4,6,6,4,3],27:[3,6,8,6,4],29:[3,5,7,5,5,4],30:[3,7,7,7,6],31:[3,7,8,7,6],33:[4,8,8,7,7],19:[3,4,5,4,3], 22:[3,5,6,5,3], 26:[3,6,8,6,3], 28:[3,7,8,7,3], 32:[3,5,8,8,5,3], 34:[3,5,9,9,5,3], 35:[3,5,9,10,5,3], 36:[3,6,9,9,6,3], 37:[3,6,10,9,6,3], 38:[3,6,10,10,6,3], 39:[3,7,9,10,7,3], 40:[3,7,10,10,7,3]},
     5:{4:[1,2,1],6:[3,2,1],7:[1,2,2,2],8:[2,3,2,1],10:[1,4,3,2],11:[2,3,4,2],13:[3,4,4,2],14:[3,4,4,2,1],15:[2,3,4,4,2],17:[3,4,4,4,2],20:[3,5,5,5,2],24:[3,4,5,5,5,2],30:[4,5,6,6,6,3],18:[2,3,4,4,3,2], 19:[2,3,4,5,3,2], 21:[2,3,5,6,3,2], 22:[2,3,5,7,3,2], 23:[2,3,6,7,3,2], 25:[2,4,6,7,4,2], 26:[2,4,6,8,4,2], 27:[2,4,7,8,4,2], 28:[2,4,7,9,4,2], 29:[2,4,8,9,4,2], 31:[2,4,6,7,6,4,2], 32:[2,4,6,8,6,4,2], 33:[2,4,7,7,7,4,2], 34:[2,4,7,8,7,4,2], 35:[2,4,7,9,7,4,2], 36:[2,4,8,8,8,4,2], 37:[2,4,8,9,8,4,2], 38:[2,4,8,10,8,4,2], 39:[2,5,8,9,8,5,2], 40:[2,5,8,10,8,5,2]},
     6:{4:[2,2],6:[4,2],7:[2,2,2,1],8:[3,3,2],10:[4,4,2],11:[1,4,4,2],13:[4,6,3],14:[5,6,3],15:[5,6,4],17:[4,6,4,3],20:[5,6,6,3],24:[6,7,7,4],26:[5,5,8,5,3],30:[6,7,7,7,3],18:[2,3,4,4,3,2], 19:[2,3,4,5,3,2], 21:[2,3,5,6,3,2], 22:[2,3,5,7,3,2], 23:[2,3,6,7,3,2], 25:[2,4,6,7,4,2], 27:[2,4,7,8,4,2], 28:[2,4,7,9,4,2], 29:[2,4,8,9,4,2], 31:[2,5,5,7,5,5,2], 32:[2,5,5,8,5,5,2], 33:[2,5,6,7,6,5,2], 34:[2,5,6,8,6,5,2], 35:[2,5,7,7,7,5,2], 36:[2,5,7,8,7,5,2], 37:[2,5,7,9,7,5,2], 38:[2,5,8,8,8,5,2], 39:[2,5,8,9,8,5,2], 40:[2,5,8,10,8,5,2]},
     7:{4:[2,2],6:[2,2,2],7:[3,4],8:[2,4,2],10:[2,3,3,2],11:[2,3,3,3],12:[2,4,3,3],13:[3,3,4,3],14:[2,4,5,3],15:[2,5,4,4],16:[2,3,4,4,3],17:[2,4,5,4,2],18:[3,4,4,4,3],20:[2,5,5,5,3],23:[3,4,6,4,4,2],24:[2,3,5,6,5,3],26:[3,4,4,5,5,3,2],30:[2,6,7,6,6,3],19:[2,3,4,4,3,3], 21:[2,3,4,5,4,3], 22:[2,3,5,5,4,3], 25:[2,4,5,6,5,3], 27:[2,4,6,6,5,4], 28:[2,4,6,7,5,4], 29:[2,4,7,7,5,4], 31:[2,4,6,7,6,4,2], 32:[2,4,6,8,6,4,2], 33:[2,4,7,7,7,4,2], 34:[2,4,7,8,7,4,2], 35:[2,4,7,9,7,4,2], 36:[2,4,8,8,8,4,2], 37:[2,4,8,9,8,4,2], 38:[2,4,8,10,8,4,2], 39:[2,5,8,9,8,5,2], 40:[2,5,8,10,8,5,2]},
@@ -114,7 +115,15 @@ function flash(btn, result) {
 
 function doCopyFX() {
     var btn = document.getElementById("btnCopyFX");
-    _exec('copyFX()', btn, function(res) { if (res === "OK") document.getElementById("btnPasteFX").disabled = false; });
+    _exec('copyFX()', btn, function(res) {
+        if (res === "OK") {
+            var pasteBtn = document.getElementById("btnPasteFX");
+            if (pasteBtn) {
+                pasteBtn.disabled = false;
+                _originalPasteDisabled = false;
+            }
+        }
+    });
 }
 function doPasteFX() {
     var btn = document.getElementById("btnPasteFX");
@@ -202,13 +211,21 @@ var sortableSections = null;
 var sortableButtons = [];
 
 function toggleEditMode() {
+    var settingPopup = document.getElementById("settingPopup");
+    if (settingPopup) settingPopup.classList.remove("show");
+    
     _editMode = !_editMode;
     document.body.classList.toggle("edit-mode", _editMode);
     var editModeBtns = document.getElementById("editModeButtons");
     if (editModeBtns) editModeBtns.style.display = _editMode ? "flex" : "none";
+    
+    var pasteBtn = document.getElementById("btnPasteFX");
+    
     if (_editMode) {
-        var settingPopup = document.getElementById("settingPopup");
-        if (settingPopup) settingPopup.classList.remove("show");
+        if (pasteBtn) {
+            _originalPasteDisabled = pasteBtn.disabled;
+            pasteBtn.disabled = false;
+        }
         if (!sortableSections) {
             sortableSections = new Sortable(document.querySelector('.panel'), { animation: 150, handle: '.section', draggable: '.section', disabled: false, onEnd: saveLayout });
         } else { sortableSections.enable(); }
@@ -220,6 +237,7 @@ function toggleEditMode() {
         sortableButtons = [];
         cleanEmptyActionRows();
         saveLayout();
+        if (pasteBtn) pasteBtn.disabled = _originalPasteDisabled;
     }
 }
 function initSortableForAllRows() {
@@ -237,8 +255,6 @@ function initSortableForAllRows() {
             animation: 200,
             draggable: '[data-tool]',
             onEnd: function() {
-                // Sau khi kéo thả, dọn dẹp hàng trống một cách an toàn
-                cleanEmptyActionRows();
                 saveLayout();
             }
         });
@@ -251,13 +267,12 @@ function cleanEmptyActionRows() {
     var rows = actionGrid.querySelectorAll('.action-row');
     var hasRowWithButtons = false;
     
-    // Duyệt từng hàng, ẩn hàng trống thay vì xóa
+    // Xóa các hàng không có nút
     rows.forEach(function(row) {
         var btns = row.querySelectorAll('[data-tool]');
         if (btns.length === 0) {
-            row.style.display = 'none';   // ẩn đi, không xóa
+            row.remove();   // xóa hẳn khỏi DOM
         } else {
-            row.style.display = '';       // hiện lại nếu có nút
             hasRowWithButtons = true;
         }
     });
@@ -267,14 +282,12 @@ function cleanEmptyActionRows() {
         var defaultRow = document.createElement('div');
         defaultRow.className = 'action-row';
         
-        // Tạo nút Group
         var groupBtn = document.createElement('button');
         groupBtn.setAttribute('data-tool', 'groupText');
         groupBtn.textContent = 'Group';
         groupBtn.onclick = function() { runBtn('groupTextLayers()', this); };
         defaultRow.appendChild(groupBtn);
         
-        // Tạo nút Center
         var centerBtn = document.createElement('button');
         centerBtn.setAttribute('data-tool', 'center');
         centerBtn.textContent = 'Center';
@@ -282,8 +295,10 @@ function cleanEmptyActionRows() {
         defaultRow.appendChild(centerBtn);
         
         actionGrid.appendChild(defaultRow);
-        initSortableForAllRows(); // cập nhật Sortable cho hàng mới
     }
+    
+    // Nếu đang ở chế độ chỉnh sửa, cập nhật lại Sortable cho các hàng còn lại
+    if (_editMode) initSortableForAllRows();
 }
 function initButtonSortable() { initSortableForAllRows(); }
 function addNewRow() {
@@ -300,7 +315,6 @@ function addNewRow() {
         animation: 200,
         draggable: '[data-tool]',
         onEnd: function() {
-            cleanEmptyActionRows();
             saveLayout();
         }
     });
@@ -586,31 +600,46 @@ function setupPreviewPopup() {
     if (btnSizeUp) btnSizeUp.addEventListener("click", function() { if (previewSize < 999) previewSize++; updateSizeUI(); });
     loadFontsFromStorage();
 
-    function renderPreviews(text) {
-        if (!grid) return;
-        grid.innerHTML = "";
-        if (!text || !text.trim()) return;
-        var seen = {};
-        for (var n = 1; n <= 9; n++) {
-            var formatted = getCasePreview(text, n);
-            if (seen[formatted]) continue;
-            seen[formatted] = true;
-            var item = document.createElement("div");
-            item.className = "preview-item";
-            if (selectedFontIndex >= 0 && customFonts[selectedFontIndex])
-                item.style.fontFamily = '"' + customFonts[selectedFontIndex] + '"';
-            item.style.fontSize = previewSize + "px";
-            item.innerHTML = formatted.replace(/\n/g, "<br>");
-            item.addEventListener("click", (function(caseNum) {
-                return function() {
-                    _exec('applyCase(' + caseNum + ')', null, function(res) {
-                        if (res === "OK") _exec('resizeBox()');
-                    });
-                };
-            })(n));
-            grid.appendChild(item);
-        }
+function renderPreviews(text) {
+    if (!grid) return;
+    if (!text || !text.trim()) {
+        if (grid.children.length) grid.innerHTML = "";
+        return;
     }
+
+    var caseNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    var seen = {};
+    var items = [];
+
+    // Lọc trùng, nhưng giữ thứ tự ưu tiên case nhỏ hơn
+    for (var n = 0; n < caseNumbers.length; n++) {
+        var caseNum = caseNumbers[n];
+        var formatted = getCasePreview(text, caseNum);
+        if (seen[formatted]) continue;
+        seen[formatted] = true;
+        items.push({ case: caseNum, html: formatted });
+    }
+
+    // Luôn rebuild lại toàn bộ grid (xóa cũ, tạo mới)
+    grid.innerHTML = "";
+    for (var i = 0; i < items.length; i++) {
+        var item = document.createElement("div");
+        item.className = "preview-item";
+        if (selectedFontIndex >= 0 && customFonts[selectedFontIndex])
+            item.style.fontFamily = '"' + customFonts[selectedFontIndex] + '"';
+        item.style.fontSize = previewSize + "px";
+        item.innerHTML = items[i].html.replace(/\n/g, "<br>");
+        // Gắn sự kiện đúng case number
+        item.addEventListener("click", (function(caseNum) {
+            return function() {
+                _exec('applyCase(' + caseNum + ')', null, function(res) {
+                    if (res === "OK") _exec('resizeBox()');
+                });
+            };
+        })(items[i].case));
+        grid.appendChild(item);
+    }
+}
 
     function updatePreviewIfNeeded() {
         cs.evalScript('getText()', function(text) {
@@ -1280,14 +1309,6 @@ window._prvToolbarMode = 'A';
     setupSettingPopup();
     on("addRowBtn", "click", addNewRow);
     on("saveLayoutBtn", "click", saveAndExitEditMode);
-    var actionGrid = document.querySelector('.action-grid');
-    if (actionGrid) {
-        actionGrid.addEventListener('click', function(e) {
-            if (!_editMode) return;
-            let row = e.target.closest('.action-row');
-            if (row && row.querySelectorAll('[data-tool]').length === 0) { row.remove(); saveLayout(); if (_editMode) { initButtonSortable(); enableAllButtonSortable(true); } }
-        });
-    }
     setupPreviewPopup();
 
     if (window._prvToolbarMode === 'A' && window._prvGetPreviewSize) {

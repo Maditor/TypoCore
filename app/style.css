@@ -202,20 +202,21 @@ button.flash-err {
     border-radius: 3px;
     margin-bottom: 4px;
     position: relative;
+    min-height: 32px;
 }
 
 .edit-mode .action-row:empty::before {
-    content: "Drag buttons here,  \A Click to remove.";
+    content: "DRAG BUTTON HERE";
     position: absolute;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    font-size: 8px;
+    font-size: 10px;
     color: #aaa;
-    white-space: pre-line;
+    white-space: nowrap; 
     pointer-events: none;
     text-align: center;
-    line-height: 1.4;
+    line-height: 1.2;
 }
 
 /* ============================================================
@@ -1490,4 +1491,13 @@ body::-webkit-scrollbar-thumb:hover,
 #gradientAngleInput {
     width: 42px !important;
     flex-shrink: 0;
+}
+
+/* ============================================================
+   HOVER NHẸ CHO KHUNG SECTION FX STUDIO & QUICK LAYOUT
+   ============================================================ */
+#section-fx:hover,
+#section-preview:hover {
+    border-color: #6a6a6a !important;
+    transition: border-color 0.2s ease;
 }
