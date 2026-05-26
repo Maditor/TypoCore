@@ -1,5 +1,5 @@
 ### ✨UPDATE TYPOCORE V1.3.1 Fix Bug
-- Sửa Lỗi Quick Layout Preview sai sau khi lượt bớt Layout trùng nhau\
+- Sửa Lỗi Quick Layout Preview sai sau khi lượt bớt Layout trùng nhau
 - Xin lỗi các bạn vì chưa kiểm tra kĩ trước khi cập nhật 
 ---
 ### ✨UPDATE TYPOCORE V1.3.1
