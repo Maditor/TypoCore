@@ -10,11 +10,9 @@
 4. Tăng tốc độ của Size-Leading (Mượn ý tưởng từ TypeR)
 5. Sửa Logic của Split Even(phù hợp với thoại vuông và chênh lệch chiều dài từng chữ không quá lớn)
 6. Xoá những chức năng thừa (Resize Box, Check, nút FG BG trong bảng màu)
----
+
 - Các bạn nhớ sao chép lại Font đang dùng trong Quick Layout để có thể nhập lại nhanh hơn
----
-- TypoCore sẽ tập trung phát triển 2 chức năng chính là FX Studio và Quick Layout.
-- Những chức năng trong cụm action sẽ được tích hợp hoặc lượt bỏ để tối ưu giao diện và chức năng chính
+
 ---
 ### 🔹 Hướng Dẫn Cài Đặt
 
@@ -33,7 +31,6 @@
 https://drive.google.com/drive/folders/1giaDXBR-Qn6iGMxBwE5yD-6j3jMYjIJo?usp=drive_link
 
 ---
-
 ### 🔹 Yêu Cầu
 - Photoshop từ CC 2018 trở lên
 - Sử dụng cùng với Typer Tool hoặc TypeR để đạt hiệu suất cao hơn
