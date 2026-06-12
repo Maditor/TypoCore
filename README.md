@@ -28,7 +28,7 @@
 
 ### 🔹 Hướng Dẫn Sử Dụng
 
-https://drive.google.com/drive/folders/1giaDXBR-Qn6iGMxBwE5yD-6j3jMYjIJo?usp=drive_link
+https://drive.google.com/drive/folders/1lGbfaF2o0LtTuS2mdM7-vmzwYX5_YshH
 
 ---
 ### 🔹 Yêu Cầu
