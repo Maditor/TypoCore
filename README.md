@@ -53,7 +53,7 @@ https://drive.google.com/drive/folders/1lGbfaF2o0LtTuS2mdM7-vmzwYX5_YshH
 1. Mở rộng dữ liệu Quick Layout(chưa hoàn thiện vẫn còn cần nhiều nâng cấp)
 2. Sửa lỗi nút bị tối màu khi sử dụng(bỏ flash xanh đỏ báo hiệu chức năng được hoàn thành không)
 3. Thêm chức năng FX Studio chỉnh sửa nhanh một số hiệu ứng của Layer Text
-4. Tích hợp chức năng Center và Size-Leading vào Quick Layer dễ dàng thao tác hơn
+4. Tích hợp chức năng Center và Size-Leading vào Quick Layout dễ dàng thao tác hơn
 
 ---
 ### ✨UPDATE TYPOCORE V1.2
