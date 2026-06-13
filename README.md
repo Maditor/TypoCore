@@ -77,7 +77,7 @@ https://drive.google.com/drive/folders/1lGbfaF2o0LtTuS2mdM7-vmzwYX5_YshH
 
 ### 🔹 FX Studio
 - Điều chỉnh nhanh hiệu ứng Gradient, Stroke, Outer Glow
-- Đồng bồ hiệu ứng và màu chữ từ Layer Text
+- Đồng bộ hiệu ứng và màu chữ từ Layer Text
 
 ### 🔹 Chia dòng thông minh
 - Tự động chia text thành **2 / 3 / 4 dòng**  
