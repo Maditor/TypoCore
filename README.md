@@ -39,13 +39,13 @@ https://drive.google.com/drive/folders/1lGbfaF2o0LtTuS2mdM7-vmzwYX5_YshH
 ### 🔹 Ảnh Xem Trước
 <table>
   <tr>
-    <td><img width="197" height="997" alt="image" src="https://github.com/user-attachments/assets/72b01c51-d51b-455f-830c-d1e984b3bebc" /></td>
-    <td><img width="200" height="997" alt="image" src="https://github.com/user-attachments/assets/d8fc5179-4141-4f25-85c4-47da4fbb6b2e" /></td>
-    <td><img width="197" height="993" alt="image" src="https://github.com/user-attachments/assets/c71677f2-084b-4c5f-9251-20118928e7f5" /></td>
-    <td><img width="205" height="999" alt="image" src="https://github.com/user-attachments/assets/450b62f6-3696-451c-8bb8-0ad1adda2563" /></td>
-    <td><img width="204" height="996" alt="image" src="https://github.com/user-attachments/assets/1a5d64ee-f2bb-41f9-b793-6104fd816eac" /></td>
+    <td><img width="692" height="388" alt="demo 1" src="https://github.com/user-attachments/assets/18b2e71f-191a-4def-8e75-8dbd4a3f8d16" /></td>
+    
   </tr>
 </table>
+
+
+<img width="692" height="388" alt="demo 1" src="https://github.com/user-attachments/assets/18b2e71f-191a-4def-8e75-8dbd4a3f8d16" />
 
 ---
 
