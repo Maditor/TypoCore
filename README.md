@@ -44,9 +44,6 @@ https://drive.google.com/drive/folders/1lGbfaF2o0LtTuS2mdM7-vmzwYX5_YshH
   </tr>
 </table>
 
-
-<img width="692" height="388" alt="demo 1" src="https://github.com/user-attachments/assets/18b2e71f-191a-4def-8e75-8dbd4a3f8d16" />
-
 ---
 
 ### ✨UPDATE TYPOCORE V1.3
