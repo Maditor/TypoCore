@@ -36,7 +36,7 @@ https://drive.google.com/drive/folders/1lGbfaF2o0LtTuS2mdM7-vmzwYX5_YshH
 - Sử dụng cùng với Typer Tool hoặc TypeR để đạt hiệu suất cao hơn
 
 ---
-### 🔹 Ảnh Xem Trước
+### 🔹 Ảnh Gif Xem Trước
 <img width="692" height="388" alt="demo 1" src="https://github.com/user-attachments/assets/18b2e71f-191a-4def-8e75-8dbd4a3f8d16" />
 
 
