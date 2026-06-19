@@ -26,9 +26,10 @@
 - Mở Photoshop  
 → Vào: **Window → Extensions → TypoCore**
 
-### 🔹 Hướng Dẫn Sử Dụng
+### 🔹 Hướng Dẫn
 
-https://drive.google.com/drive/folders/1lGbfaF2o0LtTuS2mdM7-vmzwYX5_YshH
+Hướng Dẫn Cài Đặt: https://youtu.be/k6DyjP0XRA8
+Hướng Dẫn Sử Dụng: https://youtu.be/Rlx4oNQURAU
 
 ---
 ### 🔹 Yêu Cầu
