@@ -1,7 +1,8 @@
 #target photoshop
 // ============================================================
-//  TypoCore v3 – CEP Host Script (Final)
-//  Hỗ trợ đa stroke, JSON an toàn
+//  TypoCore v3 – CEP Host Script
+//  Hỗ trợ đa stroke, JSON an toàn, Drop Shadow, Stroke Gradient
+//  FIX: Tạo gradient descriptor đọc màu đúng từ payload
 // ============================================================
 
 // JSON polyfill
@@ -76,7 +77,6 @@ function applyPattern(pattern) {
         if (i < np.length - 1) result += "\r";
     }
     layer.textItem.contents = result;
-    //app.refresh();
     return "OK";
 }
 
@@ -115,25 +115,19 @@ function splitEven(lines) {
     var base = Math.floor(total / lines);
     var extra = total % lines;
 
-    // Tạo mảng pattern với tất cả dòng = base
     var pattern = [];
     for (var i = 0; i < lines; i++) {
         pattern.push(base);
     }
 
-    // Phân phối số chữ dư (extra) cho các dòng giữa
     if (extra > 0) {
         if (lines === 3) {
-            // 3 dòng: thêm hết extra vào dòng giữa (index 1)
             pattern[1] += extra;
         } else if (lines === 4) {
-            // 4 dòng: thêm vào 2 dòng giữa (index 1 và 2), mỗi dòng tối đa 1
             if (extra >= 1) { pattern[1] += 1; extra--; }
             if (extra >= 1) { pattern[2] += 1; extra--; }
-            // Nếu vẫn còn dư (rất hiếm với 4 dòng) thì thêm vào dòng đầu
             if (extra > 0) { pattern[0] += extra; }
         } else {
-            // Các trường hợp khác (2 dòng, 5+ dòng): giữ nguyên phân phối từ trên xuống
             for (var i = 0; i < extra; i++) {
                 pattern[i] += 1;
             }
@@ -165,54 +159,36 @@ function _resizeBoxInternal() {
         var doc = app.activeDocument;
         var t = layer.textItem;
         var wasPoint = (t.kind == TextType.POINTTEXT);
-        
-        // 1. Lưu vị trí hiện tại (tâm layer)
         var oldBounds = layer.bounds;
         var oldCenterX = (oldBounds[0].as("px") + oldBounds[2].as("px")) / 2;
         var oldCenterY = (oldBounds[1].as("px") + oldBounds[3].as("px")) / 2;
-        
-        // 2. Nếu là point text thì chuyển sang paragraph text trước
         if (wasPoint) t.kind = TextType.PARAGRAPHTEXT;
-        
-        // 3. Mở rộng khung rất lớn để toàn bộ chữ hiển thị
         t.width  = new UnitValue(1500, "px");
         t.height = new UnitValue(1500, "px");
-        
-        // 4. Chuyển sang point text để đo chính xác (không mất chữ vì đã mở rộng)
         t.kind = TextType.POINTTEXT;
-        
-        // 5. Đo bounds thực tế
         var b = layer.bounds;
         var rW = b[2].as("px") - b[0].as("px");
         var rH = b[3].as("px") - b[1].as("px");
-        
-        // 6. Chuyển về paragraph text và set kích thước mới
         t.kind = TextType.PARAGRAPHTEXT;
         var padW = 80;
         var padH = 22;
         t.width  = new UnitValue(rW + padW, "px");
         t.height = new UnitValue(rH + padH, "px");
-        
-        // 7. Đưa layer về đúng vị trí cũ
         var newBounds = layer.bounds;
         var newCenterX = (newBounds[0].as("px") + newBounds[2].as("px")) / 2;
         var newCenterY = (newBounds[1].as("px") + newBounds[3].as("px")) / 2;
         layer.translate(new UnitValue(oldCenterX - newCenterX, "px"), new UnitValue(oldCenterY - newCenterY, "px"));
-        
         _typoCoreResizeResult = "OK";
     } catch(e) {
         _typoCoreResizeResult = "ERROR:" + e.message;
     }
 }
 
-
-
 function alignCenter() {
     var doc = app.activeDocument;
     var layer = getLayer();
     if (!layer) return "NO_LAYER";
     try {
-        // Lấy center vùng chọn, nếu không có thì dùng canvas
         var cx, cy, hadSelection = false;
         try {
             var sel = doc.selection.bounds;
@@ -223,37 +199,15 @@ function alignCenter() {
             cx = doc.width.as("px") / 2;
             cy = doc.height.as("px") / 2;
         }
-
-        // Rasterize bản sao để lấy bounds thực của chữ (bỏ qua khung paragraph)
         var dup = layer.duplicate();
         dup.rasterize(RasterizeType.ENTIRELAYER);
         var tb = dup.bounds;
         var tx = (tb[0].as("px") + tb[2].as("px")) / 2;
         var ty = (tb[1].as("px") + tb[3].as("px")) / 2;
         dup.remove();
-
-        // Dịch chuyển layer gốc theo đúng pixel chữ
         layer.translate(new UnitValue(cx - tx, "px"), new UnitValue(cy - ty, "px"));
-
         if (hadSelection) doc.selection.deselect();
         app.refresh();
-        return "OK";
-    } catch(e) { return "ERROR:" + e.message; }
-}
-
-function _doApplySize(layer, applySize, applyLead) {
-    try {
-        var t = layer.textItem;
-        var currentSize = t.size.as("pt");
-        var ns = currentSize + applySize;
-        if (ns < 1) ns = 1;
-        t.size = new UnitValue(ns, "pt");
-        try {
-            var currentLead = t.leading.as("pt");
-            var nl = currentLead + applyLead;
-            if (nl < 0) nl = 0;
-            t.leading = new UnitValue(nl, "pt");
-        } catch(e2) {}
         return "OK";
     } catch(e) { return "ERROR:" + e.message; }
 }
@@ -267,23 +221,19 @@ function applyNow(dSize, dLead) {
         var curLead = 0;
         try { curLead = t.leading.as("pt"); } catch(e) {}
         if (curLead <= 0) curLead = curSize * 1.2;
-
         var newSize = curSize + dSize;
         var newLead = curLead + dLead;
         if (newSize < 1) newSize = 1;
         if (newLead < 0) newLead = 0;
-
         var desc = new ActionDescriptor();
         var ref = new ActionReference();
         ref.putProperty(charIDToTypeID("Prpr"), charIDToTypeID("TxtS"));
         ref.putEnumerated(charIDToTypeID("TxLr"), charIDToTypeID("Ordn"), charIDToTypeID("Trgt"));
         desc.putReference(charIDToTypeID("null"), ref);
-
         var textStyle = new ActionDescriptor();
         textStyle.putUnitDouble(charIDToTypeID("Sz  "), charIDToTypeID("Pts "), newSize);
         textStyle.putUnitDouble(charIDToTypeID("Ldng"), charIDToTypeID("Pts "), newLead);
         desc.putObject(charIDToTypeID("T   "), charIDToTypeID("TxtS"), textStyle);
-
         executeAction(charIDToTypeID("setd"), desc, DialogModes.NO);
         return "OK";
     } catch(e) {
@@ -336,6 +286,17 @@ function pasteFX() {
                     }
                 } catch(ec) {}
             }
+            // Áp dụng Opacity và Fill (Fill Opacity) đã copy
+            try {
+                if (_copiedOpacity !== null && _copiedOpacity !== undefined) {
+                    doc.activeLayer.opacity = _copiedOpacity;
+                }
+            } catch(eo) {}
+            try {
+                if (_copiedFillOpacity !== null && _copiedFillOpacity !== undefined) {
+                    doc.activeLayer.fillOpacity = _copiedFillOpacity;
+                }
+            } catch(ef) {}
         } catch(e) {}
     }
     app.refresh();
@@ -481,7 +442,21 @@ function groupTextLayers() {
     return "OK";
 }
 
-// Hàm đọc layer effects hiện tại
+// ========== FX MANAGER – UTILITY FUNCTIONS ==========
+function safeGetUnitDouble(desc, key) {
+    try { return desc.getUnitDoubleValue(stringIDToTypeID(key)); } catch(e) {}
+    try { return desc.getDouble(stringIDToTypeID(key)); } catch(e) {}
+    return 0;
+}
+function getColorFromDesc(desc) {
+    try {
+        var r = desc.getDouble(stringIDToTypeID("red"));
+        var g = desc.getDouble(stringIDToTypeID("green"));
+        var b = desc.getDouble(stringIDToTypeID("blue"));
+        return { r: Math.round(r), g: Math.round(g), b: Math.round(b) };
+    } catch(e) { return { r:0, g:0, b:0 }; }
+}
+
 function getCurrentLayerEffects() {
     try {
         if (!app.documents.length) return null;
@@ -496,7 +471,66 @@ function getCurrentLayerEffects() {
     } catch(e) { return null; }
 }
 
-// Hàm tạo gradient descriptor (copy chính xác từ _applyFX)
+// ===================== TẠO PHẦN "MÀU" THUẦN CỦA GRADIENT (class Grdn) =====================
+// Chỉ chứa color stops + transparency stops, KHÔNG chứa enabled/angle/type/scale.
+// Dùng chung cho cả Gradient Overlay (fill effect) và Stroke Gradient (frameFX),
+// vì trong action descriptor thật của Photoshop, "gradient" luôn chỉ là phần màu;
+// angle/type/scale luôn nằm ở cấp cha (gradientFill hoặc frameFX), không lồng bên trong.
+function buildGradientColorObject(colors) {
+    if (!colors || colors.length < 2) {
+        colors = [{r:0,g:0,b:0}, {r:255,g:255,b:255}];
+    }
+    var c1 = colors[0];
+    var c2 = colors[1];
+
+    var grad = new ActionDescriptor();
+    grad.putString(stringIDToTypeID("name"), "Custom");
+    grad.putEnumerated(stringIDToTypeID("gradientForm"), stringIDToTypeID("gradientForm"), stringIDToTypeID("customStops"));
+    grad.putInteger(stringIDToTypeID("interfaceIconFrameDimmed"), 4096);
+
+    var colorList = new ActionList();
+
+    // Tạo stop 1
+    var stop1 = new ActionDescriptor();
+    var colorD1 = new ActionDescriptor();
+    colorD1.putDouble(stringIDToTypeID("red"), c1.r);
+    colorD1.putDouble(stringIDToTypeID("green"), c1.g);
+    colorD1.putDouble(stringIDToTypeID("blue"), c1.b);
+    stop1.putObject(stringIDToTypeID("color"), stringIDToTypeID("RGBColor"), colorD1);
+    stop1.putEnumerated(stringIDToTypeID("type"), stringIDToTypeID("colorStopType"), stringIDToTypeID("userStop"));
+    stop1.putInteger(stringIDToTypeID("location"), 0);
+    stop1.putInteger(stringIDToTypeID("midpoint"), 50);
+    colorList.putObject(stringIDToTypeID("colorStop"), stop1);
+
+    // Tạo stop 2
+    var stop2 = new ActionDescriptor();
+    var colorD2 = new ActionDescriptor();
+    colorD2.putDouble(stringIDToTypeID("red"), c2.r);
+    colorD2.putDouble(stringIDToTypeID("green"), c2.g);
+    colorD2.putDouble(stringIDToTypeID("blue"), c2.b);
+    stop2.putObject(stringIDToTypeID("color"), stringIDToTypeID("RGBColor"), colorD2);
+    stop2.putEnumerated(stringIDToTypeID("type"), stringIDToTypeID("colorStopType"), stringIDToTypeID("userStop"));
+    stop2.putInteger(stringIDToTypeID("location"), 4096);
+    stop2.putInteger(stringIDToTypeID("midpoint"), 50);
+    colorList.putObject(stringIDToTypeID("colorStop"), stop2);
+
+    grad.putList(stringIDToTypeID("colors"), colorList);
+
+    // Transparency stops (2 stops)
+    var transList = new ActionList();
+    for (var t = 0; t < 2; t++) {
+        var ts = new ActionDescriptor();
+        ts.putUnitDouble(stringIDToTypeID("opacity"), stringIDToTypeID("percentUnit"), 100);
+        ts.putInteger(stringIDToTypeID("location"), t === 0 ? 0 : 4096);
+        ts.putInteger(stringIDToTypeID("midpoint"), 50);
+        transList.putObject(stringIDToTypeID("transferSpec"), ts);
+    }
+    grad.putList(stringIDToTypeID("transparency"), transList);
+
+    return grad;
+}
+
+// ===================== GRADIENT OVERLAY (fill effect) DESCRIPTOR =====================
 function createGradientDescriptor(gfData) {
     var gf = new ActionDescriptor();
     gf.putBoolean(stringIDToTypeID("enabled"), true);
@@ -509,128 +543,168 @@ function createGradientDescriptor(gfData) {
     gf.putBoolean(stringIDToTypeID("reverse"), false);
     gf.putBoolean(stringIDToTypeID("dither"), false);
     gf.putBoolean(stringIDToTypeID("align"), true);
-    gf.putUnitDouble(stringIDToTypeID("scale"), stringIDToTypeID("percentUnit"), 100);
-
-    var grad = new ActionDescriptor();
-    grad.putString(stringIDToTypeID("name"), "Custom");
-    grad.putEnumerated(stringIDToTypeID("gradientForm"), stringIDToTypeID("gradientForm"), stringIDToTypeID("customStops"));
-    grad.putInteger(stringIDToTypeID("interfaceIconFrameDimmed"), 4096);
-
-    var colorList = new ActionList();
-    var cols = gfData.colors || [];
-    // Đảm bảo có ít nhất 2 màu
-    if (cols.length === 0) cols = [{r:0,g:0,b:0}, {r:255,g:255,b:255}];
-    if (cols.length === 1) cols = [cols[0], cols[0]];
-    for (var c = 0; c < cols.length; c++) {
-        var stop = new ActionDescriptor();
-        var colorD = new ActionDescriptor();
-        colorD.putDouble(stringIDToTypeID("red"), cols[c].r);
-        colorD.putDouble(stringIDToTypeID("green"), cols[c].g);
-        colorD.putDouble(stringIDToTypeID("blue"), cols[c].b);
-        stop.putObject(stringIDToTypeID("color"), stringIDToTypeID("RGBColor"), colorD);
-        stop.putEnumerated(stringIDToTypeID("type"), stringIDToTypeID("colorStopType"), stringIDToTypeID("userStop"));
-        stop.putInteger(stringIDToTypeID("location"), c === 0 ? 0 : 4096);
-        stop.putInteger(stringIDToTypeID("midpoint"), 50);
-        colorList.putObject(stringIDToTypeID("colorStop"), stop);
-    }
-    grad.putList(stringIDToTypeID("colors"), colorList);
-
-    var transList = new ActionList();
-    for (var t = 0; t < 2; t++) {
-        var ts = new ActionDescriptor();
-        ts.putUnitDouble(stringIDToTypeID("opacity"), stringIDToTypeID("percentUnit"), 100);
-        ts.putInteger(stringIDToTypeID("location"), t === 0 ? 0 : 4096);
-        ts.putInteger(stringIDToTypeID("midpoint"), 50);
-        transList.putObject(stringIDToTypeID("transferSpec"), ts);
-    }
-    grad.putList(stringIDToTypeID("transparency"), transList);
-
-    gf.putObject(stringIDToTypeID("gradient"), stringIDToTypeID("gradientClassEvent"), grad);
+    gf.putUnitDouble(stringIDToTypeID("scale"), stringIDToTypeID("percentUnit"), gfData.scale || 100);
+    gf.putObject(stringIDToTypeID("gradient"), stringIDToTypeID("gradientClassEvent"), buildGradientColorObject(gfData.colors));
     return gf;
 }
 
-// Hàm tạo stroke descriptor (giống trong _applyFX)
+// ===================== TẠO STROKE DESCRIPTOR =====================
 function createStrokeDescriptor(strokeData) {
     var st = new ActionDescriptor();
     st.putBoolean(stringIDToTypeID("enabled"), true);
     st.putBoolean(stringIDToTypeID("present"), true);
-    st.putEnumerated(stringIDToTypeID("style"), stringIDToTypeID("frameStyle"), stringIDToTypeID("outsetFrame"));
-    st.putEnumerated(stringIDToTypeID("paintType"), stringIDToTypeID("frameFill"), stringIDToTypeID("solidColor"));
+    st.putBoolean(stringIDToTypeID("showInDialog"), true);
+    
+    var styleMap = {
+        "outsetFrame": "outsetFrame",
+        "insetFrame": "insetFrame",
+        "centerFrame": "outsetFrame"
+    };
+    var styleStr = styleMap[strokeData.style] || "outsetFrame";
+    st.putEnumerated(stringIDToTypeID("style"), stringIDToTypeID("frameStyle"), stringIDToTypeID(styleStr));
+    
     st.putEnumerated(stringIDToTypeID("mode"), stringIDToTypeID("blendMode"), stringIDToTypeID("normal"));
     st.putUnitDouble(stringIDToTypeID("opacity"), stringIDToTypeID("percentUnit"), 100);
     st.putUnitDouble(stringIDToTypeID("size"), stringIDToTypeID("pixelsUnit"), strokeData.size || 1);
     st.putBoolean(stringIDToTypeID("overprint"), false);
-    var stColor = new ActionDescriptor();
-    stColor.putDouble(stringIDToTypeID("red"), strokeData.color.r);
-    stColor.putDouble(stringIDToTypeID("green"), strokeData.color.g);
-    stColor.putDouble(stringIDToTypeID("blue"), strokeData.color.b);
-    st.putObject(stringIDToTypeID("color"), stringIDToTypeID("RGBColor"), stColor);
+    
+    if (strokeData.paintType === "gradientFill") {
+        st.putEnumerated(stringIDToTypeID("paintType"), stringIDToTypeID("frameFill"), stringIDToTypeID("gradientFill"));
+        var grad = strokeData.gradient || {};
+        // Các thuộc tính gradient (angle/type/scale/reverse/align) nằm CÙNG CẤP với frameFX,
+        // không lồng vào bên trong "gradient" — đây là điểm trước đây bị sai khiến
+        // Photoshop không áp dụng được stroke gradient và không sync lại được.
+        st.putBoolean(stringIDToTypeID("reverse"), false);
+        st.putBoolean(stringIDToTypeID("align"), true);
+        st.putUnitDouble(stringIDToTypeID("angle"), stringIDToTypeID("angleUnit"), grad.angle || 0);
+        st.putEnumerated(stringIDToTypeID("type"), stringIDToTypeID("gradientType"), stringIDToTypeID(grad.type || "linear"));
+        st.putUnitDouble(stringIDToTypeID("scale"), stringIDToTypeID("percentUnit"), grad.scale || 100);
+        st.putObject(stringIDToTypeID("gradient"), stringIDToTypeID("gradientClassEvent"), buildGradientColorObject(grad.colors));
+    } else {
+        st.putEnumerated(stringIDToTypeID("paintType"), stringIDToTypeID("frameFill"), stringIDToTypeID("solidColor"));
+        var stColor = new ActionDescriptor();
+        stColor.putDouble(stringIDToTypeID("red"), strokeData.color.r);
+        stColor.putDouble(stringIDToTypeID("green"), strokeData.color.g);
+        stColor.putDouble(stringIDToTypeID("blue"), strokeData.color.b);
+        st.putObject(stringIDToTypeID("color"), stringIDToTypeID("RGBColor"), stColor);
+    }
     return st;
 }
 
-// Merge FX (thêm/cập nhật, không xóa các effect khác)
-function _applyFXMerge(newData) {
+// ===================== DROP SHADOW =====================
+function createShadowDescriptor(shadowData) {
+    var desc = new ActionDescriptor();
+    desc.putBoolean(stringIDToTypeID("enabled"), true);
+    desc.putBoolean(stringIDToTypeID("present"), true);
+    desc.putBoolean(stringIDToTypeID("showInDialog"), true);
+
+    var modeMap = {
+        "normal": "normal", "multiply": "multiply", "screen": "screen",
+        "overlay": "overlay", "darken": "darken", "lighten": "lighten",
+        "colorBurn": "colorBurn", "colorDodge": "colorDodge",
+        "linearBurn": "linearBurn", "linearDodge": "linearDodge",
+        "hardLight": "hardLight", "softLight": "softLight",
+        "difference": "difference", "exclusion": "exclusion",
+        "hue": "hue", "saturation": "saturation", "color": "color",
+        "luminosity": "luminosity"
+    };
+    var modeStr = modeMap[shadowData.mode] || "multiply";
+    desc.putEnumerated(stringIDToTypeID("mode"), stringIDToTypeID("blendMode"), stringIDToTypeID(modeStr));
+
+    var opacity = parseFloat(shadowData.opacity) || 100;
+    var angle = parseFloat(shadowData.angle) || 30;
+    var distance = parseFloat(shadowData.distance);
+    if (isNaN(distance)) distance = 5;
+    var spread = parseFloat(shadowData.spread) || 0;
+    var size = parseFloat(shadowData.size) || 5;
+
+    desc.putUnitDouble(stringIDToTypeID("opacity"), stringIDToTypeID("percentUnit"), opacity);
+    desc.putUnitDouble(stringIDToTypeID("localLightingAngle"), stringIDToTypeID("angleUnit"), angle);
+    desc.putUnitDouble(stringIDToTypeID("distance"), stringIDToTypeID("pixelsUnit"), distance);
+    desc.putUnitDouble(stringIDToTypeID("chokeMatte"), stringIDToTypeID("percentUnit"), spread);
+    desc.putUnitDouble(stringIDToTypeID("blur"), stringIDToTypeID("pixelsUnit"), size);
+    desc.putBoolean(stringIDToTypeID("useGlobalAngle"), false);
+
+    var colorDesc = new ActionDescriptor();
+    colorDesc.putDouble(stringIDToTypeID("red"), shadowData.color.r);
+    colorDesc.putDouble(stringIDToTypeID("green"), shadowData.color.g);
+    colorDesc.putDouble(stringIDToTypeID("blue"), shadowData.color.b);
+    desc.putObject(stringIDToTypeID("color"), stringIDToTypeID("RGBColor"), colorDesc);
+
+    return desc;
+}
+
+// ===================== OUTER GLOW =====================
+function createGlowDescriptor(glowData) {
+    var og = new ActionDescriptor();
+    og.putBoolean(stringIDToTypeID("enabled"), true);
+    og.putBoolean(stringIDToTypeID("present"), true);
+    og.putBoolean(stringIDToTypeID("showInDialog"), true);
+    og.putEnumerated(stringIDToTypeID("mode"), stringIDToTypeID("blendMode"), stringIDToTypeID("normal"));
+    og.putUnitDouble(stringIDToTypeID("opacity"), stringIDToTypeID("percentUnit"), glowData.opacity || 100);
+    og.putEnumerated(stringIDToTypeID("glowTechnique"), stringIDToTypeID("matteTechnique"), stringIDToTypeID("softMatte"));
+    og.putUnitDouble(stringIDToTypeID("chokeMatte"), stringIDToTypeID("pixelsUnit"), glowData.chokeMatte || 0);
+    og.putUnitDouble(stringIDToTypeID("blur"), stringIDToTypeID("pixelsUnit"), glowData.blur || 10);
+    og.putUnitDouble(stringIDToTypeID("noise"), stringIDToTypeID("percentUnit"), 0);
+    og.putBoolean(stringIDToTypeID("antiAlias"), false);
+    og.putUnitDouble(stringIDToTypeID("inputRange"), stringIDToTypeID("percentUnit"), 50);
+    var ogColor = new ActionDescriptor();
+    var glowColor = glowData.color || {r:255, g:255, b:255};
+    ogColor.putDouble(stringIDToTypeID("red"), glowColor.r);
+    ogColor.putDouble(stringIDToTypeID("green"), glowColor.g);
+    ogColor.putDouble(stringIDToTypeID("blue"), glowColor.b);
+    og.putObject(stringIDToTypeID("color"), stringIDToTypeID("RGBColor"), ogColor);
+    return og;
+}
+
+// ===================== ÁP DỤNG FX =====================
+function _applyFX(data) {
     var setDesc = new ActionDescriptor();
     var ref = new ActionReference();
     ref.putEnumerated(charIDToTypeID("Lyr "), charIDToTypeID("Ordn"), charIDToTypeID("Trgt"));
     setDesc.putReference(charIDToTypeID("null"), ref);
-    
-    // Lấy current effects
-    var currentEffects = getCurrentLayerEffects();
-    var effDesc = currentEffects ? currentEffects : new ActionDescriptor();
-    
-    // Gradient: nếu có thì ghi đè (cập nhật) – không ảnh hưởng stroke
-    if (newData.gradientFill) {
-        try {
-            var gf = createGradientDescriptor(newData.gradientFill);
-            effDesc.putObject(stringIDToTypeID("gradientFill"), stringIDToTypeID("gradientFill"), gf);
-        } catch(e) { return "ERROR: gradient " + e.message; }
-    }
-    
-    // Stroke: nếu có thì xóa stroke cũ và thêm mới (ghi đè stroke)
-    // Điều này có nghĩa là add stroke sẽ thay thế hoàn toàn stroke hiện có (phù hợp với logic UI)
-    if (newData.strokes) {
-        try {
-            // Xóa tất cả stroke cũ (tối đa 10)
-            for (var i = 1; i <= 10; i++) {
-                var key = (i === 1) ? "frameFX" : "frameFX" + i;
-                try { effDesc.erase(stringIDToTypeID(key)); } catch(e) {}
-            }
-            // Thêm mới
-            for (var s = 0; s < newData.strokes.length; s++) {
-                var st = createStrokeDescriptor(newData.strokes[s]);
-                var keyStr = (s === 0) ? "frameFX" : "frameFX" + (s + 1);
-                effDesc.putObject(stringIDToTypeID(keyStr), stringIDToTypeID("frameFX"), st);
-            }
-        } catch(e) { return "ERROR: stroke " + e.message; }
-    }
-    
-    // Outer Glow: cập nhật nếu có
-    if (newData.outerGlow) {
+    var effDesc = new ActionDescriptor();
+    effDesc.putUnitDouble(stringIDToTypeID("scale"), stringIDToTypeID("percentUnit"), 100.0);
 
-        try {
-            var og = new ActionDescriptor();
-            og.putBoolean(stringIDToTypeID("enabled"), true);
-            og.putBoolean(stringIDToTypeID("present"), true);
-            og.putBoolean(stringIDToTypeID("showInDialog"), true);
-            og.putEnumerated(stringIDToTypeID("mode"), stringIDToTypeID("blendMode"), stringIDToTypeID("normal"));
-            og.putUnitDouble(stringIDToTypeID("opacity"), stringIDToTypeID("percentUnit"), newData.outerGlow.opacity || 100);
-            og.putEnumerated(stringIDToTypeID("glowTechnique"), stringIDToTypeID("matteTechnique"), stringIDToTypeID("softMatte"));
-            og.putUnitDouble(stringIDToTypeID("chokeMatte"), stringIDToTypeID("pixelsUnit"), newData.outerGlow.chokeMatte || 0);
-            og.putUnitDouble(stringIDToTypeID("blur"), stringIDToTypeID("pixelsUnit"), newData.outerGlow.blur || 10);
-            og.putUnitDouble(stringIDToTypeID("noise"), stringIDToTypeID("percentUnit"), 0);
-            og.putBoolean(stringIDToTypeID("antiAlias"), false);
-            og.putUnitDouble(stringIDToTypeID("inputRange"), stringIDToTypeID("percentUnit"), 50);
-            var ogColor = new ActionDescriptor();
-            ogColor.putDouble(stringIDToTypeID("red"), newData.outerGlow.color.r);
-            ogColor.putDouble(stringIDToTypeID("green"), newData.outerGlow.color.g);
-            ogColor.putDouble(stringIDToTypeID("blue"), newData.outerGlow.color.b);
-            og.putObject(stringIDToTypeID("color"), stringIDToTypeID("RGBColor"), ogColor);
-            effDesc.putObject(stringIDToTypeID("outerGlow"), stringIDToTypeID("outerGlow"), og);
-        } catch(e) { return "ERROR: outerGlow " + e.message; }
+    if (data.gradientFill && data.gradientFill.enabled) {
+        var gf = createGradientDescriptor(data.gradientFill);
+        effDesc.putObject(stringIDToTypeID("gradientFill"), stringIDToTypeID("gradientFill"), gf);
     }
-    
-    // Ghi lại layer effects
+    if (data.strokes && data.strokes.length > 0) {
+        for (var s = 0; s < data.strokes.length; s++) {
+            var st = createStrokeDescriptor(data.strokes[s]);
+            var keyStr = s === 0 ? "frameFX" : "frameFX" + (s + 1);
+            effDesc.putObject(stringIDToTypeID(keyStr), stringIDToTypeID("frameFX"), st);
+        }
+    }
+    if (data.dropShadow && data.dropShadow.enabled) {
+        var sd = createShadowDescriptor(data.dropShadow);
+        effDesc.putObject(stringIDToTypeID("dropShadow"), stringIDToTypeID("dropShadow"), sd);
+    }
+    if (data.outerGlow && data.outerGlow.enabled) {
+        var og = createGlowDescriptor(data.outerGlow);
+        effDesc.putObject(stringIDToTypeID("outerGlow"), stringIDToTypeID("outerGlow"), og);
+    }
+    if (data.textColor) {
+        try {
+            var layer = getLayer();
+            if (layer && layer.kind == LayerKind.TEXT) {
+                var newColor = new SolidColor();
+                newColor.rgb.red = data.textColor.r;
+                newColor.rgb.green = data.textColor.g;
+                newColor.rgb.blue = data.textColor.b;
+                layer.textItem.color = newColor;
+                // Áp dụng opacity nếu có
+                if (data.textColor.opacity !== undefined) {
+                    layer.opacity = data.textColor.opacity;
+                }
+                // Áp dụng fill (Fill Opacity) nếu có
+                if (data.textColor.fill !== undefined) {
+                    layer.fillOpacity = data.textColor.fill;
+                }
+            }
+        } catch(e) {}
+    }
     var layerDesc = new ActionDescriptor();
     layerDesc.putObject(stringIDToTypeID("layerEffects"), stringIDToTypeID("layerEffects"), effDesc);
     setDesc.putObject(charIDToTypeID("T   "), charIDToTypeID("Lyr "), layerDesc);
@@ -639,41 +713,69 @@ function _applyFXMerge(newData) {
     return "OK";
 }
 
-
-
-// ========== FX MANAGER ==========
-function safeGetUnitDouble(desc, key) {
-    try { return desc.getUnitDoubleValue(stringIDToTypeID(key)); } catch(e) {}
-    try { return desc.getDouble(stringIDToTypeID(key)); } catch(e) {}
-    return 0;
+function _applyFXMerge(newData) {
+    var setDesc = new ActionDescriptor();
+    var ref = new ActionReference();
+    ref.putEnumerated(charIDToTypeID("Lyr "), charIDToTypeID("Ordn"), charIDToTypeID("Trgt"));
+    setDesc.putReference(charIDToTypeID("null"), ref);
+    var currentEffects = getCurrentLayerEffects();
+    var effDesc = currentEffects ? currentEffects : new ActionDescriptor();
+    if (newData.gradientFill) {
+        try {
+            var gf = createGradientDescriptor(newData.gradientFill);
+            effDesc.putObject(stringIDToTypeID("gradientFill"), stringIDToTypeID("gradientFill"), gf);
+        } catch(e) { return "ERROR: gradient " + e.message; }
+    }
+    if (newData.strokes) {
+        try {
+            for (var i = 1; i <= 10; i++) {
+                var key = (i === 1) ? "frameFX" : "frameFX" + i;
+                try { effDesc.erase(stringIDToTypeID(key)); } catch(e) {}
+            }
+            for (var s = 0; s < newData.strokes.length; s++) {
+                var st = createStrokeDescriptor(newData.strokes[s]);
+                var keyStr = (s === 0) ? "frameFX" : "frameFX" + (s + 1);
+                effDesc.putObject(stringIDToTypeID(keyStr), stringIDToTypeID("frameFX"), st);
+            }
+        } catch(e) { return "ERROR: stroke " + e.message; }
+    }
+    if (newData.dropShadow && newData.dropShadow.enabled) {
+        try { effDesc.erase(stringIDToTypeID("dropShadow")); } catch(e) {}
+        var sd = createShadowDescriptor(newData.dropShadow);
+        effDesc.putObject(stringIDToTypeID("dropShadow"), stringIDToTypeID("dropShadow"), sd);
+    }
+    if (newData.outerGlow && newData.outerGlow.enabled) {
+        try { effDesc.erase(stringIDToTypeID("outerGlow")); } catch(e) {}
+        var og = createGlowDescriptor(newData.outerGlow);
+        effDesc.putObject(stringIDToTypeID("outerGlow"), stringIDToTypeID("outerGlow"), og);
+    }
+    var layerDesc = new ActionDescriptor();
+    layerDesc.putObject(stringIDToTypeID("layerEffects"), stringIDToTypeID("layerEffects"), effDesc);
+    setDesc.putObject(charIDToTypeID("T   "), charIDToTypeID("Lyr "), layerDesc);
+    executeAction(charIDToTypeID("setd"), setDesc, DialogModes.NO);
+    app.refresh();
+    return "OK";
 }
-function getColorFromDesc(desc) {
-    try {
-        var r = desc.getDouble(stringIDToTypeID("red"));
-        var g = desc.getDouble(stringIDToTypeID("green"));
-        var b = desc.getDouble(stringIDToTypeID("blue"));
-        return { r: Math.round(r), g: Math.round(g), b: Math.round(b) };
-    } catch(e) { return { r:0, g:0, b:0 }; }
-}
+
+// ===================== GET FX DATA =====================
 function getFXData() {
     try {
         if (!app.documents.length) return "NO_DOC";
         var out = {};
+            try {
+                var layer = getLayer();
+                if (layer && layer.kind == LayerKind.TEXT) {
+                    var rgb = layer.textItem.color.rgb;
+                    out.textColor = {
+                        r: Math.round(rgb.red),
+                        g: Math.round(rgb.green),
+                        b: Math.round(rgb.blue),
+                        opacity: layer.opacity,     // Opacity của layer
+                        fill: layer.fillOpacity      // Fill Opacity của layer
+                    };
+                }
+            } catch(e) {}
 
-        // Lấy màu chữ (text color) – luôn thực hiện, không phụ thuộc vào layer effects
-        try {
-            var layer = getLayer();
-            if (layer && layer.kind == LayerKind.TEXT) {
-                var rgb = layer.textItem.color.rgb;
-                out.textColor = {
-                    r: Math.round(rgb.red),
-                    g: Math.round(rgb.green),
-                    b: Math.round(rgb.blue)
-                };
-            }
-        } catch(e) {}
-
-        // Lấy layer effects (nếu có)
         var ref = new ActionReference();
         ref.putEnumerated(charIDToTypeID("Lyr "), charIDToTypeID("Ordn"), charIDToTypeID("Trgt"));
         var desc = executeActionGet(ref);
@@ -709,11 +811,59 @@ function getFXData() {
             try {
                 if (fx.hasKey(stringIDToTypeID("frameFX"))) {
                     var st = fx.getObjectValue(stringIDToTypeID("frameFX"));
-                    out.strokes = [{
+                    var paintType = st.getEnumerationValue(stringIDToTypeID("paintType"));
+                    var paintTypeStr = typeIDToStringID(paintType);
+                    var strokeObj = {
                         enabled: st.getBoolean(stringIDToTypeID("enabled")),
                         size: safeGetUnitDouble(st, "size"),
-                        color: getColorFromDesc(st.getObjectValue(stringIDToTypeID("color")))
-                    }];
+                        style: typeIDToStringID(st.getEnumerationValue(stringIDToTypeID("style")))
+                    };
+                    if (paintTypeStr === "gradientFill") {
+                        // angle/type/scale nằm cùng cấp với frameFX (st), "gradient" chỉ chứa color stops
+                        var grad = st.getObjectValue(stringIDToTypeID("gradient"));
+                        var type = "linear";
+                        try { type = typeIDToStringID(st.getEnumerationValue(stringIDToTypeID("type"))); } catch(e) {}
+                        var colors = [];
+                        if (grad.hasKey(stringIDToTypeID("colors"))) {
+                            var colorList = grad.getList(stringIDToTypeID("colors"));
+                            for (var i = 0; i < colorList.count; i++) {
+                                var stop = colorList.getObjectValue(i);
+                                colors.push(getColorFromDesc(stop.getObjectValue(stringIDToTypeID("color"))));
+                            }
+                        }
+                        var angle = safeGetUnitDouble(st, "angle");
+                        strokeObj.paintType = "gradientFill";
+                        strokeObj.gradient = {
+                            type: type,
+                            angle: angle,
+                            colors: colors,
+                            scale: safeGetUnitDouble(st, "scale") || 100
+                        };
+                    } else {
+                        strokeObj.paintType = "solidColor";
+                        strokeObj.color = getColorFromDesc(st.getObjectValue(stringIDToTypeID("color")));
+                    }
+                    out.strokes = [strokeObj];
+                }
+            } catch(e) {}
+
+            // Drop Shadow
+            try {
+                if (fx.hasKey(stringIDToTypeID("dropShadow"))) {
+                    var ds = fx.getObjectValue(stringIDToTypeID("dropShadow"));
+                    var blendMode = "multiply";
+                    try { blendMode = typeIDToStringID(ds.getEnumerationValue(stringIDToTypeID("mode"))); } catch(e) {}
+                    out.dropShadow = {
+                        enabled: ds.getBoolean(stringIDToTypeID("enabled")),
+                        mode: blendMode,
+                        opacity: safeGetUnitDouble(ds, "opacity"),
+                        angle: safeGetUnitDouble(ds, "localLightingAngle"),
+                        distance: safeGetUnitDouble(ds, "distance"),
+                        spread: safeGetUnitDouble(ds, "chokeMatte"),
+                        size: safeGetUnitDouble(ds, "blur"),
+                        color: getColorFromDesc(ds.getObjectValue(stringIDToTypeID("color"))),
+                        useGlobalLight: ds.getBoolean(stringIDToTypeID("useGlobalAngle"))
+                    };
                 }
             } catch(e) {}
 
@@ -728,27 +878,9 @@ function getFXData() {
                         chokeMatte: safeGetUnitDouble(og, "chokeMatte"),
                         color: getColorFromDesc(og.getObjectValue(stringIDToTypeID("color")))
                     };
-                } else {
-                    out.outerGlow = {
-                        enabled: false,
-                        opacity: 100,
-                        blur: 20,
-                        chokeMatte: 5,
-                        color: { r: 255, g: 255, b: 255 }
-                    };
                 }
             } catch(e) {}
-        } else {
-            // Không có layer effects → vẫn cung cấp outerGlow mặc định
-            out.outerGlow = {
-                enabled: false,
-                opacity: 100,
-                blur: 20,
-                chokeMatte: 5,
-                color: { r: 255, g: 255, b: 255 }
-            };
         }
-
         return JSON.stringify(out);
     } catch(e) { return "ERROR:" + e.message; }
 }
@@ -766,72 +898,6 @@ function getBackgroundColor() {
     } catch(e) { return "ERROR:" + e.message; }
 }
 
-// Apply: ghi đè hoàn toàn (chỉ giữ những mục được bật)
-function _applyFX(data) {
-    var setDesc = new ActionDescriptor();
-    var ref = new ActionReference();
-    ref.putEnumerated(charIDToTypeID("Lyr "), charIDToTypeID("Ordn"), charIDToTypeID("Trgt"));
-    setDesc.putReference(charIDToTypeID("null"), ref);
-    var effDesc = new ActionDescriptor();
-    effDesc.putUnitDouble(stringIDToTypeID("scale"), stringIDToTypeID("percentUnit"), 100.0);
-
-    // Gradient
-    if (data.gradientFill && data.gradientFill.enabled) {
-        var gf = createGradientDescriptor(data.gradientFill);
-        effDesc.putObject(stringIDToTypeID("gradientFill"), stringIDToTypeID("gradientFill"), gf);
-    }
-    // Stroke
-    if (data.strokes && data.strokes.length > 0) {
-        for (var s = 0; s < data.strokes.length; s++) {
-            var st = createStrokeDescriptor(data.strokes[s]);
-            var keyStr = s === 0 ? "frameFX" : "frameFX" + (s + 1);
-            effDesc.putObject(stringIDToTypeID(keyStr), stringIDToTypeID("frameFX"), st);
-        }
-    }
-    // Outer Glow
-    if (data.outerGlow && data.outerGlow.enabled) {
-        var og = new ActionDescriptor();
-        og.putBoolean(stringIDToTypeID("enabled"), true);
-        og.putBoolean(stringIDToTypeID("present"), true);
-        og.putBoolean(stringIDToTypeID("showInDialog"), true);
-        og.putEnumerated(stringIDToTypeID("mode"), stringIDToTypeID("blendMode"), stringIDToTypeID("normal"));
-        og.putUnitDouble(stringIDToTypeID("opacity"), stringIDToTypeID("percentUnit"), data.outerGlow.opacity || 100);
-        og.putEnumerated(stringIDToTypeID("glowTechnique"), stringIDToTypeID("matteTechnique"), stringIDToTypeID("softMatte"));
-        og.putUnitDouble(stringIDToTypeID("chokeMatte"), stringIDToTypeID("pixelsUnit"), data.outerGlow.chokeMatte || 0);
-        og.putUnitDouble(stringIDToTypeID("blur"), stringIDToTypeID("pixelsUnit"), data.outerGlow.blur || 10);
-        og.putUnitDouble(stringIDToTypeID("noise"), stringIDToTypeID("percentUnit"), 0);
-        og.putBoolean(stringIDToTypeID("antiAlias"), false);
-        og.putUnitDouble(stringIDToTypeID("inputRange"), stringIDToTypeID("percentUnit"), 50);
-        var ogColor = new ActionDescriptor();
-        ogColor.putDouble(stringIDToTypeID("red"), data.outerGlow.color.r);
-        ogColor.putDouble(stringIDToTypeID("green"), data.outerGlow.color.g);
-        ogColor.putDouble(stringIDToTypeID("blue"), data.outerGlow.color.b);
-        og.putObject(stringIDToTypeID("color"), stringIDToTypeID("RGBColor"), ogColor);
-        effDesc.putObject(stringIDToTypeID("outerGlow"), stringIDToTypeID("outerGlow"), og);
-    }
-    
-// Áp dụng màu chữ (nếu có)
-if (data.textColor) {
-    try {
-        var layer = getLayer();
-        if (layer && layer.kind == LayerKind.TEXT) {
-            var newColor = new SolidColor();
-            newColor.rgb.red = data.textColor.r;
-            newColor.rgb.green = data.textColor.g;
-            newColor.rgb.blue = data.textColor.b;
-            layer.textItem.color = newColor;
-        }
-    } catch(e) {}
-}
-
-    var layerDesc = new ActionDescriptor();
-    layerDesc.putObject(stringIDToTypeID("layerEffects"), stringIDToTypeID("layerEffects"), effDesc);
-    setDesc.putObject(charIDToTypeID("T   "), charIDToTypeID("Lyr "), layerDesc);
-    executeAction(charIDToTypeID("setd"), setDesc, DialogModes.NO);
-    app.refresh();
-    return "OK";
-}
-
 function applyFXFromJSON(jsonStr) {
     try {
         var data = (typeof jsonStr === "string") ? JSON.parse(jsonStr) : jsonStr;
@@ -843,7 +909,6 @@ function applyFXFromJSON(jsonStr) {
     } catch(e) { return "ERROR:" + e.message; }
 }
 
-// Lấy danh sách ID của các layer đang được chọn
 function getSelectedLayersIDs() {
     var ids = [];
     try {
@@ -856,14 +921,10 @@ function getSelectedLayersIDs() {
             ids.push(list.getReference(i).getIdentifier());
         }
     } catch(e) {
-        // Fallback: nếu lỗi thì chỉ lấy active layer
         ids.push(app.activeDocument.activeLayer.id);
     }
     return ids;
 }
-
-// Áp dụng FX cho tất cả text layer đang được chọn
-
 
 function applyFXToSelectedLayers(payloadStr) {
     try {
@@ -872,7 +933,6 @@ function applyFXToSelectedLayers(payloadStr) {
         var originalLayer = doc.activeLayer;
         var selectedIds = getSelectedLayersIDs();
         if (selectedIds.length === 0) return "NO_LAYER";
-
         var payload;
         if (typeof payloadStr === "string") {
             payload = JSON.parse(payloadStr);
@@ -881,7 +941,6 @@ function applyFXToSelectedLayers(payloadStr) {
         }
         if (!payload) return "NO_DATA";
 
-        // Single layer: apply thẳng
         if (selectedIds.length === 1) {
             selectLayerByID(selectedIds[0]);
             _applyFX(payload);
@@ -889,31 +948,20 @@ function applyFXToSelectedLayers(payloadStr) {
             return "OK";
         }
 
-        // ===== NHIỀU LAYER =====
-        // 1. Duplicate layer đầu tiên làm holder (có content, tránh lỗi empty layer)
         selectLayerByID(selectedIds[0]);
         var tempLayer = doc.activeLayer.duplicate(doc, ElementPlacement.PLACEATEND);
         tempLayer.name = "_typo_temp_fx";
         doc.activeLayer = tempLayer;
-
-        // 2. Apply FX lên holder
         _applyFX(payload);
         doc.activeLayer = tempLayer;
-
-        // 3. Tạo style tạm từ layer holder
         var styleName = "_typo_fx_" + Number(new Date());
         makeTempStyle(styleName);
-
-        // 4. Restore selection rồi apply style 1 lần duy nhất
         selectLayersByIDs(selectedIds);
         applyTempStyle(styleName);
-
-        // 5. Dọn dẹp
         doc.activeLayer = tempLayer;
         tempLayer.remove();
         deleteTempStyle(styleName);
 
-        // 6. Set màu chữ riêng nếu có (style không chứa text color)
         if (payload.textColor) {
             for (var i = 0; i < selectedIds.length; i++) {
                 selectLayerByID(selectedIds[i]);
@@ -924,11 +972,16 @@ function applyFXToSelectedLayers(payloadStr) {
                         nc.rgb.green = payload.textColor.g;
                         nc.rgb.blue  = payload.textColor.b;
                         doc.activeLayer.textItem.color = nc;
+                        if (payload.textColor.opacity !== undefined) {
+                            doc.activeLayer.opacity = payload.textColor.opacity;
+                        }
+                        if (payload.textColor.fill !== undefined) {
+                            doc.activeLayer.fillOpacity = payload.textColor.fill;
+                        }
                     }
                 } catch(e) {}
             }
         }
-
         selectLayerByID(originalLayer.id);
         app.refresh();
         return "OK";
@@ -937,21 +990,14 @@ function applyFXToSelectedLayers(payloadStr) {
     }
 }
 
-// Tạo style tạm từ layer đang active
-// Dịch từ Alchemist: _obj:"make", _target:[{_ref:"style"}]
 function makeTempStyle(name) {
     var desc = new ActionDescriptor();
     var ref = new ActionReference();
     ref.putClass(stringIDToTypeID("style"));
     desc.putReference(charIDToTypeID("null"), ref);
     desc.putString(charIDToTypeID("Nm  "), name);
-    // using: target layer hiện tại
     var fromRef = new ActionReference();
-    fromRef.putEnumerated(
-        charIDToTypeID("Lyr "),
-        charIDToTypeID("Ordn"),
-        charIDToTypeID("Trgt")
-    );
+    fromRef.putEnumerated(charIDToTypeID("Lyr "), charIDToTypeID("Ordn"), charIDToTypeID("Trgt"));
     desc.putReference(stringIDToTypeID("using"), fromRef);
     desc.putBoolean(stringIDToTypeID("blendOptions"), false);
     desc.putBoolean(stringIDToTypeID("layerEffects"), true);
@@ -959,26 +1005,18 @@ function makeTempStyle(name) {
     executeAction(charIDToTypeID("Mk  "), desc, DialogModes.NO);
 }
 
-// Apply style lên selection hiện tại
-// Dịch từ Alchemist: _obj:"applyStyle"
 function applyTempStyle(name) {
     var desc = new ActionDescriptor();
     var ref = new ActionReference();
     ref.putName(stringIDToTypeID("style"), name);
     desc.putReference(charIDToTypeID("null"), ref);
-    // to: target layer/selection hiện tại
     var toRef = new ActionReference();
-    toRef.putEnumerated(
-        charIDToTypeID("Lyr "),
-        charIDToTypeID("Ordn"),
-        charIDToTypeID("Trgt")
-    );
+    toRef.putEnumerated(charIDToTypeID("Lyr "), charIDToTypeID("Ordn"), charIDToTypeID("Trgt"));
     desc.putReference(stringIDToTypeID("to"), toRef);
     desc.putBoolean(stringIDToTypeID("group"), true);
     executeAction(stringIDToTypeID("applyStyle"), desc, DialogModes.NO);
 }
 
-// Xóa style tạm
 function deleteTempStyle(name) {
     try {
         var desc = new ActionDescriptor();
@@ -989,20 +1027,6 @@ function deleteTempStyle(name) {
     } catch(e) {}
 }
 
-function getHotkeyPressed() {
-    try {
-        var e = ScriptUI.environment.keyboardState;
-        // Dùng Ctrl + Shift + X (e.ctrlKey)
-        if (e.ctrlKey && e.shiftKey && (e.key === "x" || e.key === "X")) {
-            return "ctrlShiftX";
-        }
-        return "";
-    } catch(e) {
-        return "";
-    }
-}
-
-// Restore multi-selection
 function selectLayersByIDs(ids) {
     for (var i = 0; i < ids.length; i++) {
         var desc = new ActionDescriptor();
@@ -1010,13 +1034,8 @@ function selectLayersByIDs(ids) {
         ref.putIdentifier(charIDToTypeID("Lyr "), ids[i]);
         desc.putReference(charIDToTypeID("null"), ref);
         desc.putBoolean(stringIDToTypeID("makeVisible"), false);
-        desc.putEnumerated(
-            stringIDToTypeID("selectionModifier"),
-            stringIDToTypeID("selectionModifierType"),
-            i === 0
-                ? stringIDToTypeID("replaceSelection")
-                : stringIDToTypeID("addToSelection")
-        );
+        desc.putEnumerated(stringIDToTypeID("selectionModifier"), stringIDToTypeID("selectionModifierType"),
+            i === 0 ? stringIDToTypeID("replaceSelection") : stringIDToTypeID("addToSelection"));
         executeAction(charIDToTypeID("slct"), desc, DialogModes.NO);
     }
 }
@@ -1024,28 +1043,14 @@ function selectLayersByIDs(ids) {
 // ========== COPY FX ==========
 var _copiedFX = null;
 var _copiedColor = null;
-
-function getCurrentLayerEffects() {
-    try {
-        if (!app.documents.length) return null;
-        var ref = new ActionReference();
-        ref.putEnumerated(charIDToTypeID("Lyr "), charIDToTypeID("Ordn"), charIDToTypeID("Trgt"));
-        var desc = executeActionGet(ref);
-        var fxKey = stringIDToTypeID("layerEffects");
-        if (desc.hasKey(fxKey)) {
-            return desc.getObjectValue(fxKey);
-        }
-        return null;
-    } catch(e) { return null; }
-}
+var _copiedOpacity = null;
+var _copiedFillOpacity = null;
 
 function copyFX() {
     if (!app.documents.length) return "NO_DOC";
     var fx = getCurrentLayerEffects();
     if (!fx) return "NO_FX";
     _copiedFX = fx;
-    
-    // Lưu màu chữ nếu là text layer
     var layer = getLayer();
     if (layer && layer.kind == LayerKind.TEXT) {
         try {
@@ -1055,5 +1060,8 @@ function copyFX() {
     } else {
         _copiedColor = null;
     }
+    // Copy luôn Opacity và Fill (Fill Opacity) của layer để paste đồng bộ
+    try { _copiedOpacity = app.activeDocument.activeLayer.opacity; } catch(eo) { _copiedOpacity = null; }
+    try { _copiedFillOpacity = app.activeDocument.activeLayer.fillOpacity; } catch(ef) { _copiedFillOpacity = null; }
     return "OK";
 }

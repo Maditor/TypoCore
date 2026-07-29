@@ -107,12 +107,13 @@
           </div>
         </div>
 
-        <!-- Stroke -->
+               <!-- Stroke -->
         <div class="fx-section">
           <div class="fx-section-header">
             <label><input type="checkbox" class="fx-enable" data-fx="frameFX"> Stroke</label>
             <div class="fx-swatches">
-              <div class="color-swatch" id="strokeColor1" title="Stroke 1"></div>
+              <div class="color-swatch" id="strokeColor1" title="Stroke Color 1"></div>
+              <div class="color-swatch" id="strokeColor2" title="Stroke Color 2"></div>
             </div>
           </div>
           <div class="fx-section-body">
@@ -121,9 +122,33 @@
               <input type="range" id="strokeSize1" min="0" max="20" value="2">
               <input type="number" class="fx-row-val" id="strokeSize1Val" value="2" min="0" max="50" step="1">
             </div>
+            <div class="fx-row">
+              <span class="fx-row-label">Position</span>
+              <select id="strokePosition" class="fx-select">
+                <option value="outsetFrame">Outside</option>
+                <option value="insetFrame">Inside</option>
+                <option value="centerFrame">Center</option>
+              </select>
+            </div>
+            <div class="fx-row">
+              <span class="fx-row-label">Type</span>
+              <select id="strokeGradientType" class="fx-select">
+                <option value="linear">Linear</option>
+                <option value="radial">Radial</option>
+                <option value="angle">Angle</option>
+                <option value="reflected">Reflected</option>
+                <option value="diamond">Diamond</option>
+              </select>
+            </div>
+            <div class="fx-angle-row">
+              <canvas id="strokeAngleCanvas" width="20" height="20"></canvas>
+              <span class="fx-angle-label">Angle</span>
+              <input type="number" id="strokeAngleInput" min="-180" max="180" value="0" step="1">
+            </div>
           </div>
         </div>
 
+        
         <!-- Outer Glow -->
         <div class="fx-section">
           <div class="fx-section-header">
@@ -135,23 +160,85 @@
           <div class="fx-section-body">
             <div class="fx-row">
               <span class="fx-row-label">Opacity</span>
-              <input type="range" id="glowOpacity" min="1" max="100" value="100">
-              <input type="number" class="fx-row-val" id="glowOpacityVal" value="100" min="1" max="100" step="1">
+              <input type="range" id="glowOpacity" min="0" max="100" value="100">
+              <input type="number" class="fx-row-val" id="glowOpacityVal" value="100" min="0" max="100" step="1">
             </div>
             <div class="fx-row">
               <span class="fx-row-label">Size</span>
-              <input type="range" id="glowSize" min="1" max="50" value="20">
-              <input type="number" class="fx-row-val" id="glowSizeVal" value="20" min="1" max="30" step="1">
+              <input type="range" id="glowSize" min="0" max="250" value="20">
+              <input type="number" class="fx-row-val" id="glowSizeVal" value="20" min="0" max="1000" step="1">
             </div>
             <div class="fx-row">
               <span class="fx-row-label">Spread</span>
-              <input type="range" id="glowSpread" min="1" max="100" value="5">
-              <input type="number" class="fx-row-val" id="glowSpreadVal" value="5" min="1" max="100" step="1">
+              <input type="range" id="glowSpread" min="0" max="100" value="5">
+              <input type="number" class="fx-row-val" id="glowSpreadVal" value="5" min="0" max="100" step="1">
             </div>
           </div>
         </div>
 
-        <!-- Text Color -->
+        <!-- Drop Shadow -->
+        <div class="fx-section">
+          <div class="fx-section-header">
+            <label><input type="checkbox" class="fx-enable" data-fx="dropShadow"> Drop Shadow</label>
+            <div class="fx-swatches">
+              <div class="color-swatch" id="shadowColor" title="Shadow Color"></div>
+            </div>
+          </div>
+          <div class="fx-section-body">
+            <div class="fx-row">
+              <span class="fx-row-label">Blend</span>
+              <select id="shadowBlendMode" class="fx-select">
+                <option value="normal"selected>Normal</option>
+                <option value="multiply">Multiply</option>
+                <option value="screen">Screen</option>
+                <option value="overlay">Overlay</option>
+                <option value="darken">Darken</option>
+                <option value="lighten">Lighten</option>
+                <option value="colorBurn">Color Burn</option>
+                <option value="colorDodge">Color Dodge</option>
+                <option value="linearBurn">Linear Burn</option>
+                <option value="linearDodge">Linear Dodge (Add)</option>
+                <option value="hardLight">Hard Light</option>
+                <option value="softLight">Soft Light</option>
+                <option value="difference">Difference</option>
+                <option value="exclusion">Exclusion</option>
+                <option value="hue">Hue</option>
+                <option value="saturation">Saturation</option>
+                <option value="color">Color</option>
+                <option value="luminosity">Luminosity</option>
+              </select>
+            </div>
+            <!-- Hàng góc (Angle) -->
+            <div class="fx-angle-row">
+              <canvas id="shadowAngleCanvas" width="20" height="20"></canvas>
+              <span class="fx-angle-label">Angle</span>
+              <input type="number" id="shadowAngleInput" min="-180" max="180" value="30" step="1">
+            </div>
+            <!-- Opacity – đặt sau Angle, trước Distance -->
+            <div class="fx-row">
+              <span class="fx-row-label">Opacity</span>
+              <input type="range" id="shadowOpacity" min="0" max="100" value="100">
+              <input type="number" class="fx-row-val" id="shadowOpacityVal" value="100" min="0" max="100" step="1">
+            </div>
+            <div class="fx-row">
+              <span class="fx-row-label">Distance</span>
+              <input type="range" id="shadowDistance" min="0" max="100" value="0">
+              <input type="number" class="fx-row-val" id="shadowDistanceVal" value="0" min="0" max="30000" step="1">
+            </div>
+            <div class="fx-row">
+              <span class="fx-row-label">Spread</span>
+              <input type="range" id="shadowSpread" min="0" max="100" value="20">
+              <input type="number" class="fx-row-val" id="shadowSpreadVal" value="20" min="0" max="100" step="1">
+            </div>
+            <div class="fx-row">
+              <span class="fx-row-label">Size</span>
+              <input type="range" id="shadowSize" min="0" max="250" value="100">
+              <input type="number" class="fx-row-val" id="shadowSizeVal" value="100" min="0" max="1000" step="1">
+            </div>
+          </div>
+        </div>
+
+                <!-- Text Color -->
         <div class="fx-section" id="fxTextColorSection">
           <div class="fx-section-header">
             <label><input type="checkbox" class="fx-enable" id="enableTextColor" data-fx="textColor"> Text Color</label>
@@ -160,11 +247,19 @@
             </div>
           </div>
           <div class="fx-section-body">
+
+            <div class="fx-row">
+              <span class="fx-row-label">Opacity</span>
+              <input type="range" id="textColorOpacity" min="0" max="100" value="100">
+              <input type="number" class="fx-row-val" id="textColorOpacityVal" value="100" min="0" max="100" step="1">
+            </div>
+
             <div class="fx-row">
               <span class="fx-row-label">Fill</span>
               <input type="range" id="textColorFill" min="0" max="100" value="100">
               <input type="number" class="fx-row-val" id="textColorFillVal" value="100" min="0" max="100" step="1">
             </div>
+
           </div>
         </div>
       </div><!-- /fx-scroll -->
@@ -174,6 +269,7 @@
 <div class="fx-toolbar">
   <button id="btnFxToggleMode">Less</button>
   <button id="btnFxApply">Apply</button>
+  <button id="btnFxClear">Clear</button>
 </div>
     </div><!-- /fxPopup -->
   </div><!-- /fxOverlay -->
@@ -219,35 +315,68 @@
       <div class="setting-wrapper">
         <button class="setting-btn" id="settingBtn">Setting</button>
         <div class="setting-popup" id="settingPopup">
-        <div class="setting-item" data-action="chooseLogo">🗁 Choose Logo</div>
-        <div class="setting-item" data-action="pasteAllOpened">⎘ Paste Logo to All Opened</div>
+        <div class="setting-item" data-action="chooseLogo"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;flex-shrink:0;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Choose Logo</div>
+        <div class="setting-item" data-action="pasteAllOpened"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;flex-shrink:0;"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>Paste Logo to All Opened</div>
         <div class="setting-separator"></div>
-	<div class="setting-item" data-toggle="multiplePaste">
-        <input type="checkbox" id="toggle_multiplePaste"> Multiple Paste FX
+        <div class="setting-item" id="advancedSettingToggle" style="cursor: pointer; justify-content: space-between;">
+          <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;flex-shrink:0;"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Advanced Setting</span>
+          <span id="advancedSettingArrow" style="font-size: 10px;">▼</span>
         </div>
-        <div class="setting-item" data-toggle="manualLoadText">
-          <input type="checkbox" id="toggle_manualLoadText"> Manual Load Text
+        <div id="advancedSettingSub" style="display: none;">
+          <div class="setting-item" data-toggle="multiplePaste" style="padding-left:24px;">
+            <input type="checkbox" id="toggle_multiplePaste"> Multiple Paste FX
+          </div>
+          <div class="setting-item" data-toggle="manualLoadText" style="padding-left:24px;">
+            <input type="checkbox" id="toggle_manualLoadText"> Manual Load Text
+          </div>
+          <div class="setting-item" data-toggle="manualResizeBox" style="padding-left:24px;">
+            <input type="checkbox" id="toggle_manualResizeBox"> Manual Resize Box
+          </div>
+          <div class="setting-item" data-toggle="autoFX" style="padding-left:24px;">
+            <input type="checkbox" id="toggle_autoFX"> Auto FX
+          </div>
         </div>
 <div class="setting-separator"></div>
 <div class="setting-item" id="layoutManagerToggle" style="cursor: pointer; justify-content: space-between;">
-    <span>⊟ Panel Manager</span>
+    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;flex-shrink:0;"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>Panel Manager</span>
     <span id="layoutManagerArrow" style="font-size: 10px;">▼</span>
 </div>
 <div id="layoutManagerSub" style="display: none;">
-    <div class="setting-item" data-action="toggleEditMode" style="padding-left:24px;">✎ Panel Setup</div>
-    <div class="setting-item" data-action="resetLayout" style="padding-left:24px;">⟳ Reset Panel</div>
+    <div class="setting-item" data-action="toggleEditMode" style="padding-left:24px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;flex-shrink:0;"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>Panel Setup</div>
+    <div class="setting-item" data-action="resetLayout" style="padding-left:24px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;flex-shrink:0;"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Reset Panel</div>
 </div>
         <div class="setting-separator"></div>
         <div class="setting-item" id="toolManagerToggle" style="cursor: pointer; justify-content: space-between;">
-          <span>⚙️ Hide/Unhide Tool</span>
+          <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;flex-shrink:0;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Hide/Unhide Tool</span>
           <span id="toolManagerArrow" style="font-size: 10px;">▼</span>
         </div>
         <div id="toolManagerSub" style="display: none;">
   <div class="setting-item" data-toggle="quickLayout">
     <input type="checkbox" id="toggle_quickLayout"> Quick Layout
   </div>
-  <div class="setting-item" data-toggle="fxManager">
-    <input type="checkbox" id="toggle_fxManager"> FX Manager
+  <div class="setting-item" style="justify-content: space-between; padding-right: 8px;">
+    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+      <input type="checkbox" id="toggle_fxManager" data-toggle="fxManager">
+      <span>FX Studio</span>
+    </label>
+    <span id="fxManagerSubArrow" style="font-size: 10px; cursor: pointer; user-select: none;">▼</span>
+  </div>
+  <div id="fxManagerSub" style="display: none;">
+    <div class="setting-item" style="padding-left: 24px;">
+      <input type="checkbox" id="toggle_fx_gradientFill"> Gradient
+    </div>
+    <div class="setting-item" style="padding-left: 24px;">
+      <input type="checkbox" id="toggle_fx_frameFX"> Stroke
+    </div>
+    <div class="setting-item" style="padding-left: 24px;">
+      <input type="checkbox" id="toggle_fx_outerGlow"> Outer Glow
+    </div>
+    <div class="setting-item" style="padding-left: 24px;">
+      <input type="checkbox" id="toggle_fx_dropShadow"> Drop Shadow
+    </div>
+    <div class="setting-item" style="padding-left: 24px;">
+      <input type="checkbox" id="toggle_fx_textColor"> Text Color
+    </div>
   </div>
   <div class="setting-item" data-toggle="layoutCases">
     <input type="checkbox" id="toggle_layoutCases"> Layout Cases

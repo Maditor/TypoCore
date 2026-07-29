@@ -12,6 +12,8 @@ var MAX_QUEUE = 1;
 var _currentExpr = '';
 var previewInterval = null;
 var syncedTextColor = null;
+var autoFxInterval = null;
+var lastAutoFxText = null;
 var basicColors = [
     "#000000", "#333333", "#666666", "#999999", "#CCCCCC", "#FFFFFF", "#880000", "#AA0000",
     "#CC0000", "#EE0000", "#FF3333", "#FF6666", "#FF9999", "#FFCCCC", "#880044", "#AA0055",
@@ -147,6 +149,8 @@ var TOOL_DEFS = {
     logo:        { dataTool: "logo",       isSection: false },
     manualLoadText: { dataTool: "nonexistent2", isSection: false },
     multiplePaste: { dataTool: "nonexistent", isSection: false },
+    manualResizeBox: { dataTool: "nonexistent3", isSection: false },
+    autoFX: { dataTool: "nonexistent4", isSection: false },
 };
 
 function loadVis() {
@@ -155,12 +159,16 @@ function loadVis() {
         if (raw) {
             var data = JSON.parse(raw);
             if (typeof data.multiplePaste === "undefined") data.multiplePaste = false;
+            if (typeof data.manualResizeBox === "undefined") data.manualResizeBox = false;
+            if (typeof data.autoFX === "undefined") data.autoFX = false;
             return data;
         }
     } catch(e) {}
     var vis = {};
     for (var k in TOOL_DEFS) vis[k] = true;
     vis.multiplePaste = false;
+    vis.manualResizeBox = false;
+    vis.autoFX = false;
     return vis;
 }
 function saveVis(vis) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(vis)); } catch(e) {} }
@@ -205,6 +213,43 @@ function updateCheckboxes(vis) {
     }
 }
 
+// ===================== FX STUDIO – ẨN/HIỆN TỪNG CHỨC NĂNG =====================
+// Khi 1 chức năng bị ẩn: không hiển thị trong FX Studio, và KHÔNG sync/apply chức năng đó.
+var FX_STUDIO_KEY = "typoCoreFxFeatureVisibility";
+var FX_FEATURE_DEFAULTS = { gradientFill: true, frameFX: true, outerGlow: true, dropShadow: false, textColor: true };
+
+function loadFxFeatureVis() {
+    try {
+        var raw = localStorage.getItem(FX_STUDIO_KEY);
+        if (raw) {
+            var data = JSON.parse(raw);
+            for (var k in FX_FEATURE_DEFAULTS) {
+                if (typeof data[k] === "undefined") data[k] = FX_FEATURE_DEFAULTS[k];
+            }
+            return data;
+        }
+    } catch(e) {}
+    var vis = {};
+    for (var k in FX_FEATURE_DEFAULTS) vis[k] = FX_FEATURE_DEFAULTS[k];
+    return vis;
+}
+function saveFxFeatureVis(vis) { try { localStorage.setItem(FX_STUDIO_KEY, JSON.stringify(vis)); } catch(e) {} }
+
+// Dùng để guard sync/apply: nếu chức năng đang bị ẩn thì bỏ qua, không đồng bộ/áp dụng
+function isFxFeatureVisible(key) { return loadFxFeatureVis()[key] !== false; }
+
+function applyFxFeatureVis(vis) {
+    for (var key in FX_FEATURE_DEFAULTS) {
+        var show = vis[key] !== false;
+        var enableCb = document.querySelector('.fx-enable[data-fx="' + key + '"]');
+        var section = enableCb ? enableCb.closest(".fx-section") : null;
+        if (section) section.style.display = show ? "" : "none";
+        var cb = document.getElementById("toggle_fx_" + key);
+        if (cb) cb.checked = show;
+    }
+    requestAnimationFrame(function() { cs.resizeContent(document.body.scrollWidth, document.body.scrollHeight); });
+}
+
 var LAYOUT_KEY = "typoCoreLayout";
 var _editMode = false;
 var sortableSections = null;
@@ -242,12 +287,10 @@ function toggleEditMode() {
 }
 function initSortableForAllRows() {
     var rows = document.querySelectorAll('.action-row');
-    // Hủy các sortable cũ
     sortableButtons.forEach(function(s) { if(s) s.destroy(); });
     sortableButtons = [];
     
     rows.forEach(function(row) {
-        // Bỏ qua hàng đang ẩn
         if (row.style.display === 'none') return;
         
         var sort = new Sortable(row, {
@@ -267,17 +310,15 @@ function cleanEmptyActionRows() {
     var rows = actionGrid.querySelectorAll('.action-row');
     var hasRowWithButtons = false;
     
-    // Xóa các hàng không có nút
     rows.forEach(function(row) {
         var btns = row.querySelectorAll('[data-tool]');
         if (btns.length === 0) {
-            row.remove();   // xóa hẳn khỏi DOM
+            row.remove();
         } else {
             hasRowWithButtons = true;
         }
     });
     
-    // Nếu không còn hàng nào có nút, tạo hàng mặc định
     if (!hasRowWithButtons) {
         var defaultRow = document.createElement('div');
         defaultRow.className = 'action-row';
@@ -297,7 +338,6 @@ function cleanEmptyActionRows() {
         actionGrid.appendChild(defaultRow);
     }
     
-    // Nếu đang ở chế độ chỉnh sửa, cập nhật lại Sortable cho các hàng còn lại
     if (_editMode) initSortableForAllRows();
 }
 function initButtonSortable() { initSortableForAllRows(); }
@@ -307,7 +347,7 @@ function addNewRow() {
     
     var newRow = document.createElement('div');
     newRow.className = 'action-row';
-    newRow.style.display = 'flex';   // hiển thị ngay
+    newRow.style.display = 'flex';
     actionGrid.appendChild(newRow);
     
     var sort = new Sortable(newRow, {
@@ -380,7 +420,7 @@ function resetLayout() {
     var footer = document.querySelector('.panel-footer'); if (footer) panel.appendChild(footer);
     document.getElementById('section-layout').style.display = 'none';
     var vis = loadVis();
-    for (var k in TOOL_DEFS) vis[k] = (k === 'layoutCases' || k === 'manualLoadText') ? false : true;
+    for (var k in TOOL_DEFS) vis[k] = (k === 'layoutCases' || k === 'manualLoadText' || k === 'manualResizeBox') ? false : true;
     saveVis(vis); applyVis(vis);
     var actionGrid = document.querySelector('.action-grid');
     var allBtns = document.querySelectorAll('[data-tool]');
@@ -414,22 +454,36 @@ function setupSettingPopup() {
     var layoutManagerArrow = document.getElementById("layoutManagerArrow");
     var toolManagerSub = document.getElementById("toolManagerSub");
     var toolManagerArrow = document.getElementById("toolManagerArrow");
+    var advancedSettingSub = document.getElementById("advancedSettingSub");
+    var advancedSettingArrow = document.getElementById("advancedSettingArrow");
 function closeSettingPopup() {
     popup.classList.remove("show");
     if (layoutManagerSub) layoutManagerSub.style.display = "none";
     if (layoutManagerArrow) layoutManagerArrow.textContent = "▼";
     if (toolManagerSub) toolManagerSub.style.display = "none";
     if (toolManagerArrow) toolManagerArrow.textContent = "▼";
+    if (advancedSettingSub) advancedSettingSub.style.display = "none";
+    if (advancedSettingArrow) advancedSettingArrow.textContent = "▼";
     var actionsSub = document.getElementById("actionsSub");
     var actionsArrow = document.getElementById("actionsSubArrow");
     if (actionsSub) actionsSub.style.display = "none";
     if (actionsArrow) actionsArrow.textContent = "▼";
+    var fxManagerSub = document.getElementById("fxManagerSub");
+    var fxManagerSubArrow = document.getElementById("fxManagerSubArrow");
+    if (fxManagerSub) fxManagerSub.style.display = "none";
+    if (fxManagerSubArrow) fxManagerSubArrow.textContent = "▼";
 }
     function openSettingPopup() {
         if (layoutManagerSub) layoutManagerSub.style.display = "none";
         if (layoutManagerArrow) layoutManagerArrow.textContent = "▼";
         if (toolManagerSub) toolManagerSub.style.display = "none";
         if (toolManagerArrow) toolManagerArrow.textContent = "▼";
+        if (advancedSettingSub) advancedSettingSub.style.display = "none";
+        if (advancedSettingArrow) advancedSettingArrow.textContent = "▼";
+        var fxManagerSub = document.getElementById("fxManagerSub");
+        var fxManagerSubArrow = document.getElementById("fxManagerSubArrow");
+        if (fxManagerSub) fxManagerSub.style.display = "none";
+        if (fxManagerSubArrow) fxManagerSubArrow.textContent = "▼";
         popup.classList.add("show");
     }
     if (btn) {
@@ -458,6 +512,16 @@ function closeSettingPopup() {
     popup.querySelectorAll("input[type='checkbox']").forEach(function(cb) {
         cb.addEventListener("click", function(e) {
             e.stopPropagation();
+            if (this.id.indexOf("toggle_fx_") === 0) {
+                var fxKey = this.id.replace("toggle_fx_", "");
+                if (FX_FEATURE_DEFAULTS.hasOwnProperty(fxKey)) {
+                    var fxVis = loadFxFeatureVis();
+                    fxVis[fxKey] = this.checked;
+                    saveFxFeatureVis(fxVis);
+                    applyFxFeatureVis(fxVis);
+                }
+                return;
+            }
             var key = this.id.replace("toggle_", "");
             if (TOOL_DEFS.hasOwnProperty(key)) {
                 var vis = loadVis(); vis[key] = this.checked; saveVis(vis); applyVis(vis);
@@ -467,6 +531,8 @@ function closeSettingPopup() {
                         if (vis.manualLoadText) { if (previewInterval) { clearInterval(previewInterval); previewInterval = null; } }
                         else { if (!previewInterval) previewInterval = setInterval(window.updatePreviewIfNeeded, 1000); }
                     }
+                } else if (key === "autoFX") {
+                    if (vis.autoFX) startAutoFx(); else stopAutoFx();
                 }
             }
         });
@@ -479,13 +545,30 @@ function closeSettingPopup() {
     if (toolToggle) {
         toolToggle.addEventListener("click", function(e) { e.stopPropagation(); if (toolManagerSub.style.display === "none") { toolManagerSub.style.display = "block"; toolManagerArrow.textContent = "▲"; } else { toolManagerSub.style.display = "none"; toolManagerArrow.textContent = "▼"; } });
     }
+    var advancedSettingToggle = document.getElementById("advancedSettingToggle");
+    if (advancedSettingToggle) {
+        advancedSettingToggle.addEventListener("click", function(e) { e.stopPropagation(); if (advancedSettingSub.style.display === "none") { advancedSettingSub.style.display = "block"; advancedSettingArrow.textContent = "▲"; } else { advancedSettingSub.style.display = "none"; advancedSettingArrow.textContent = "▼"; } });
+    }
 
-    // Toggle Actions sub-menu
     var actionsArrow = document.getElementById("actionsSubArrow");
     if (actionsArrow) {
         actionsArrow.addEventListener("click", function(e) {
             e.stopPropagation();
             var sub = document.getElementById("actionsSub");
+            if (sub.style.display === "none" || sub.style.display === "") {
+                sub.style.display = "block";
+                this.textContent = "▲";
+            } else {
+                sub.style.display = "none";
+                this.textContent = "▼";
+            }
+        });
+    }
+    var fxManagerSubArrow = document.getElementById("fxManagerSubArrow");
+    if (fxManagerSubArrow) {
+        fxManagerSubArrow.addEventListener("click", function(e) {
+            e.stopPropagation();
+            var sub = document.getElementById("fxManagerSub");
             if (sub.style.display === "none" || sub.style.display === "") {
                 sub.style.display = "block";
                 this.textContent = "▲";
@@ -600,46 +683,43 @@ function setupPreviewPopup() {
     if (btnSizeUp) btnSizeUp.addEventListener("click", function() { if (previewSize < 999) previewSize++; updateSizeUI(); });
     loadFontsFromStorage();
 
-function renderPreviews(text) {
-    if (!grid) return;
-    if (!text || !text.trim()) {
-        if (grid.children.length) grid.innerHTML = "";
-        return;
+    function renderPreviews(text) {
+        if (!grid) return;
+        if (!text || !text.trim()) {
+            if (grid.children.length) grid.innerHTML = "";
+            return;
+        }
+        var caseNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+        var seen = {};
+        var items = [];
+        for (var n = 0; n < caseNumbers.length; n++) {
+            var caseNum = caseNumbers[n];
+            var formatted = getCasePreview(text, caseNum);
+            if (seen[formatted]) continue;
+            seen[formatted] = true;
+            items.push({ case: caseNum, html: formatted });
+        }
+        grid.innerHTML = "";
+        for (var i = 0; i < items.length; i++) {
+            var item = document.createElement("div");
+            item.className = "preview-item";
+            if (selectedFontIndex >= 0 && customFonts[selectedFontIndex])
+                item.style.fontFamily = '"' + customFonts[selectedFontIndex] + '"';
+            item.style.fontSize = previewSize + "px";
+            item.innerHTML = items[i].html.replace(/\n/g, "<br>");
+            item.addEventListener("click", (function(caseNum) {
+                return function() {
+                    _exec('applyCase(' + caseNum + ')', null, function(res) {
+                        if (res === "OK") {
+                            var vis = loadVis();
+                            if (!vis.manualResizeBox) _exec('resizeBox()');
+                        }
+                    });
+                };
+            })(items[i].case));
+            grid.appendChild(item);
+        }
     }
-
-    var caseNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-    var seen = {};
-    var items = [];
-
-    // Lọc trùng, nhưng giữ thứ tự ưu tiên case nhỏ hơn
-    for (var n = 0; n < caseNumbers.length; n++) {
-        var caseNum = caseNumbers[n];
-        var formatted = getCasePreview(text, caseNum);
-        if (seen[formatted]) continue;
-        seen[formatted] = true;
-        items.push({ case: caseNum, html: formatted });
-    }
-
-    // Luôn rebuild lại toàn bộ grid (xóa cũ, tạo mới)
-    grid.innerHTML = "";
-    for (var i = 0; i < items.length; i++) {
-        var item = document.createElement("div");
-        item.className = "preview-item";
-        if (selectedFontIndex >= 0 && customFonts[selectedFontIndex])
-            item.style.fontFamily = '"' + customFonts[selectedFontIndex] + '"';
-        item.style.fontSize = previewSize + "px";
-        item.innerHTML = items[i].html.replace(/\n/g, "<br>");
-        // Gắn sự kiện đúng case number
-        item.addEventListener("click", (function(caseNum) {
-            return function() {
-                _exec('applyCase(' + caseNum + ')', null, function(res) {
-                    if (res === "OK") _exec('resizeBox()');
-                });
-            };
-        })(items[i].case));
-        grid.appendChild(item);
-    }
-}
 
     function updatePreviewIfNeeded() {
         cs.evalScript('getText()', function(text) {
@@ -709,6 +789,7 @@ function renderPreviews(text) {
     };
     if (btnOpen) btnOpen.click();
 }
+
 function makeResizable(popupElement, handleElement) {
     let startY, startHeight;
     handleElement.addEventListener('mousedown', function(e) {
@@ -729,7 +810,7 @@ function makeResizable(popupElement, handleElement) {
 }
 
 // ========== FX MANAGER ==========
-var fxCollapsedMode = false;
+var fxCollapsedMode = localStorage.getItem("typoCoreFxCollapsed") === "1";
 var fxSwatchTarget = null;
 var recentColors = [];
 
@@ -772,6 +853,7 @@ if (angleCanvas) {
         angleDragging = false;
         document.removeEventListener("mousemove", onAngleMouseMove);
         document.removeEventListener("mouseup", onAngleMouseUp);
+        maybeAutoApply();
     }
 }
 var angleCtx = angleCanvas ? angleCanvas.getContext("2d") : null;
@@ -801,15 +883,31 @@ on("gradientAngleInput", "input", function(e) {
 
 function setSwatchColor(el, c) {
     if (!el) return;
+    if (c === null || c === undefined) {
+        el.style.backgroundColor = "transparent";
+        el.style.backgroundImage = "linear-gradient(45deg, #555 25%, transparent 25%, transparent 75%, #555 75%, #555 100%), linear-gradient(45deg, #555 25%, transparent 25%, transparent 75%, #555 75%, #555 100%)";
+        el.style.backgroundSize = "10px 10px";
+        el.style.backgroundPosition = "0 0, 5px 5px";
+        el.removeAttribute("data-color");
+        return;
+    }
     el.style.backgroundColor = "rgb(" + c.r + "," + c.g + "," + c.b + ")";
+    el.style.backgroundImage = "none";
     el.setAttribute("data-color", JSON.stringify(c));
 }
-function getSwatchColor(el) {
-    if (!el) return { r: 255, g: 255, b: 255 };
-    var d = el.getAttribute("data-color");
-    try { return d ? JSON.parse(d) : { r:255, g:255, b:255 }; } catch (e) { return { r:255, g:255, b:255 }; }
-}
 
+function getSwatchColor(el) {
+    if (!el) return null;
+    var d = el.getAttribute("data-color");
+    if (d) {
+        try {
+            var c = JSON.parse(d);
+            console.log("getSwatchColor parsed:", c);
+            return c;
+        } catch(e) { console.log("getSwatchColor error:", e); }
+    }
+    return null;
+}
 function addRecentColor(c) {
     recentColors = recentColors.filter(function(item) { return item.r !== c.r || item.g !== c.g || item.b !== c.b; });
     recentColors.unshift(c);
@@ -830,7 +928,7 @@ function showColorPicker(targetSwatch, e) {
         recentColors.forEach(function(c) {
             var sw = document.createElement("div"); sw.className = "swatch";
             sw.style.backgroundColor = "rgb(" + c.r + "," + c.g + "," + c.b + ")";
-            sw.addEventListener("click", (function(color) { return function() { setSwatchColor(fxSwatchTarget, color); popup.style.display = "none"; addRecentColor(color); }; })(c));
+            sw.addEventListener("click", (function(color) { return function() { setSwatchColor(fxSwatchTarget, color); popup.style.display = "none"; addRecentColor(color); maybeAutoApply(); }; })(c));
             recentDiv.appendChild(sw);
         });
     }
@@ -838,6 +936,16 @@ function showColorPicker(targetSwatch, e) {
     var colorGrid = document.getElementById("colorGrid");
     if (colorGrid) {
         colorGrid.innerHTML = "";
+        // Ô None (rỗng) đặt ở đầu lưới, ngay bên trái ô màu đen -> dùng để bỏ chọn màu (cần cho Stroke/Stroke Gradient)
+        var noneDiv = document.createElement("div");
+        noneDiv.textContent = "✕";
+        noneDiv.style.cssText = "width:14px; height:14px; background:#333; color:#fff; display:flex; align-items:center; justify-content:center; font-size:10px; cursor:pointer; border:1px solid #666; border-radius:2px;";
+        noneDiv.addEventListener("click", function() {
+            setSwatchColor(fxSwatchTarget, null);
+            popup.style.display = "none";
+            maybeAutoApply();
+        });
+        colorGrid.appendChild(noneDiv);
         basicColors.forEach(function(hex) {
             var sw = document.createElement("div");
             sw.style.backgroundColor = hex; sw.style.border = "1px solid #666"; sw.style.borderRadius = "2px";
@@ -848,6 +956,7 @@ function showColorPicker(targetSwatch, e) {
                     setSwatchColor(fxSwatchTarget, {r:r, g:g, b:b});
                     popup.style.display = "none";
                     addRecentColor({r:r, g:g, b:b});
+                    maybeAutoApply();
                 };
             })(hex));
             colorGrid.appendChild(sw);
@@ -907,7 +1016,7 @@ swatches.forEach(function(sw) {
         var jsx = '(function(){var c=new SolidColor();c.rgb.red=' + current.r + ';c.rgb.green=' + current.g + ';c.rgb.blue=' + current.b + ';app.foregroundColor=c;var ok=app.showColorPicker();if(!ok) return "CANCEL";var fg=app.foregroundColor.rgb;return JSON.stringify({r:Math.round(fg.red),g:Math.round(fg.green),b:Math.round(fg.blue)});})()';
         cs.evalScript(jsx, function(result) {
             if (!result || result === "CANCEL" || result === "null" || result === "undefined") return;
-            try { var c = JSON.parse(result); setSwatchColor(sw, c); addRecentColor(c); } catch(e) {}
+            try { var c = JSON.parse(result); setSwatchColor(sw, c); addRecentColor(c); maybeAutoApply(); } catch(e) {}
         });
     });
 });
@@ -924,10 +1033,10 @@ swatches.forEach(function(sw) {
         var jsx = '(function(){var c=new SolidColor();c.rgb.red=' + current.r + ';c.rgb.green=' + current.g + ';c.rgb.blue=' + current.b + ';app.foregroundColor=c;var ok=app.showColorPicker();if(!ok) return "CANCEL";var fg=app.foregroundColor.rgb;return JSON.stringify({r:Math.round(fg.red),g:Math.round(fg.green),b:Math.round(fg.blue)});})()';
         cs.evalScript(jsx, function(result) {
             if (!result || result === "CANCEL" || result === "null" || result === "undefined") return;
-            try { var c = JSON.parse(result); setSwatchColor(tcSwatch, c); addRecentColor(c); } catch(e) {}
+            try { var c = JSON.parse(result); setSwatchColor(tcSwatch, c); addRecentColor(c); maybeAutoApply(); } catch(e) {}
         });
     });
-    setSwatchColor(tcSwatch, {r:255, g:255, b:255});
+    setSwatchColor(tcSwatch, {r:0, g:0, b:0});
 })();
 
 on("btnOpenFX", "click", function() {
@@ -936,18 +1045,66 @@ on("btnOpenFX", "click", function() {
     var isOpen = el.style.display === "flex";
     el.style.display = isOpen ? "none" : "flex";
     localStorage.setItem("typoCoreFxState", isOpen ? "closed" : "open");
+    
+    // Nếu đang mở và trạng thái Less đã lưu, áp dụng lại
+    if (!isOpen) {
+        // Khi mở, áp dụng trạng thái Less từ localStorage
+        setTimeout(function() {
+            var savedCollapsed = localStorage.getItem("typoCoreFxCollapsed") === "1";
+            fxCollapsedMode = savedCollapsed;
+            var toggleBtn = document.getElementById("btnFxToggleMode");
+            if (toggleBtn) toggleBtn.textContent = savedCollapsed ? 'More' : 'Less';
+            document.querySelectorAll('.fx-section-body').forEach(function(body) {
+                if (savedCollapsed) {
+                    body.style.maxHeight = '0';
+                    body.style.overflow = 'hidden';
+                    body.style.padding = '0';
+                    body.style.margin = '0';
+                } else {
+                    body.style.maxHeight = body.scrollHeight + 'px';
+                    body.style.overflow = '';
+                    body.style.padding = '';
+                    body.style.margin = '';
+                }
+            });
+        }, 50);
+    }
 });
+
 on("btnFxClose", "click", function() {
     var el = document.getElementById("fxOverlay");
-    if (el) { el.style.display = "none"; localStorage.setItem("typoCoreFxState", "closed"); }
+    if (el) {
+        el.style.display = "none";
+        localStorage.setItem("typoCoreFxState", "closed");
+        // Reset tất cả inline style của body để tránh lỗi giao diện lần sau
+        document.querySelectorAll('.fx-section-body').forEach(function(body) {
+            body.style.maxHeight = '';
+            body.style.overflow = '';
+            body.style.padding = '';
+            body.style.margin = '';
+        });
+    }
 });
 
 on("btnFxToggleMode", "click", function() {
     fxCollapsedMode = !fxCollapsedMode;
     this.textContent = fxCollapsedMode ? 'More' : 'Less';
     localStorage.setItem("typoCoreFxCollapsed", fxCollapsedMode ? "1" : "0");
+
     document.querySelectorAll('.fx-section-body').forEach(function(body) {
-        body.style.maxHeight = fxCollapsedMode ? body.scrollHeight + 'px' : '0';
+        if (fxCollapsedMode) {
+            body.style.maxHeight = '0';
+            body.style.overflow = 'hidden';
+            body.style.padding = '0';
+            body.style.margin = '0';
+        } else {
+            body.style.maxHeight = body.scrollHeight + 'px';
+            setTimeout(function() {
+                body.style.overflow = '';
+                body.style.padding = '';
+                body.style.margin = '';
+            }, 200);
+        }
     });
 });
 
@@ -987,59 +1144,136 @@ function bindSlider(sliderId, valId) {
     input.value = Math.round(slider.value);
 }
 bindSlider("strokeSize1", "strokeSize1Val");
+bindSlider("textColorFill", "textColorFillVal");
+bindSlider("shadowOpacity", "shadowOpacityVal");
+bindSlider("shadowDistance", "shadowDistanceVal");
+bindSlider("shadowSpread", "shadowSpreadVal");
+bindSlider("shadowSize", "shadowSizeVal");
 bindSlider("glowOpacity", "glowOpacityVal");
 bindSlider("glowSize", "glowSizeVal");
 bindSlider("glowSpread", "glowSpreadVal");
-bindSlider("textColorFill", "textColorFillVal");
+bindSlider("textColorOpacity", "textColorOpacityVal");
 
-// SYNC với debounce
+// ===== Stroke Angle =====
+var strokeAngleCanvas = document.getElementById("strokeAngleCanvas");
+var strokeAngleInput = document.getElementById("strokeAngleInput");
+var strokeAngleDragging = false;
+
+function drawStrokeAngleCircle(deg) {
+    if (!strokeAngleCanvas) return;
+    var ctx = strokeAngleCanvas.getContext("2d");
+    var w = strokeAngleCanvas.width, h = strokeAngleCanvas.height;
+    ctx.clearRect(0, 0, w, h);
+    var cx = w/2, cy = h/2, r = 7;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+    ctx.strokeStyle = "#aaa"; ctx.lineWidth = 1; ctx.stroke();
+    var rad = deg * Math.PI / 180;
+    var x = cx + r * Math.cos(rad);
+    var y = cy - r * Math.sin(rad);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = "#aaa"; ctx.lineWidth = 1; ctx.stroke();
+}
+
+function handleStrokeAngleDrag(e) {
+    if (!strokeAngleDragging) return;
+    var rect = strokeAngleCanvas.getBoundingClientRect();
+    var cx = rect.left + rect.width/2;
+    var cy = rect.top + rect.height/2;
+    var dx = e.clientX - cx;
+    var dy = e.clientY - cy;
+    var rad = Math.atan2(-dy, dx);
+    var deg = rad * 180 / Math.PI;
+    if (deg > 180) deg -= 360;
+    if (deg < -180) deg += 360;
+    var val = Math.round(deg);
+    strokeAngleInput.value = val;
+    drawStrokeAngleCircle(val);
+}
+
+if (strokeAngleCanvas) {
+    strokeAngleCanvas.addEventListener("mousedown", function(e) {
+        e.preventDefault();
+        strokeAngleDragging = true;
+        handleStrokeAngleDrag(e);
+        document.addEventListener("mousemove", handleStrokeAngleDrag);
+        document.addEventListener("mouseup", function() {
+            strokeAngleDragging = false;
+            document.removeEventListener("mousemove", handleStrokeAngleDrag);
+            maybeAutoApply();
+        });
+    });
+}
+
+if (strokeAngleInput) {
+    strokeAngleInput.addEventListener("input", function() {
+        var deg = parseFloat(this.value) || 0;
+        drawStrokeAngleCircle(deg);
+    });
+    drawStrokeAngleCircle(parseFloat(strokeAngleInput.value) || 0);
+}
+
 // SYNC với debounce
 var syncTimeout = null;
-on("btnFxSync", "click", function() {
-    if (syncTimeout) clearTimeout(syncTimeout);
-    syncTimeout = setTimeout(function() {
-        var btn = document.getElementById("btnFxSync");
-        cs.evalScript("getFXData()", function(json) {
-            if (!json || json === "NO_DOC" || json.indexOf("ERROR:") === 0) {
-                alert("Không tìm thấy FX: " + (json || "undefined"));
-                if (btn) flash(btn, "NO_FX");
-                return;
-            }
-            try {
-                var data = JSON.parse(json);
-                // Lưu màu chữ (nếu có) vào swatch Text Color section
-                var textColorCheck = document.getElementById("enableTextColor");
-                var textColorSwatch = document.getElementById("textColorSwatch");
-                if (data.textColor) {
-                    syncedTextColor = data.textColor;
-                    if (textColorCheck) textColorCheck.checked = true;
-                    if (textColorSwatch) setSwatchColor(textColorSwatch, data.textColor);
-                } else {
-                    syncedTextColor = null;
-                    if (textColorCheck) textColorCheck.checked = false;
-                }
-                if (!data.strokes && data.frameFX) data.strokes = [data.frameFX];
+function performFxSync(opts) {
+    opts = opts || {};
+    var btn = opts.btn || document.getElementById("btnFxSync");
+    var silent = !!opts.silent;
+    cs.evalScript("getFXData()", function(json) {
+        if (!json || json === "NO_DOC" || json.indexOf("ERROR:") === 0) {
+            if (!silent) alert("Không tìm thấy FX: " + (json || "undefined"));
+            if (btn && !silent) flash(btn, "NO_FX");
+            if (opts.onDone) opts.onDone(false);
+            return;
+        }
+        try {
+            var data = JSON.parse(json);
+            var fxVis = loadFxFeatureVis();
 
+// Lưu màu chữ (bỏ qua nếu Text Color đang bị ẩn trong FX Studio)
+var textColorCheck = document.getElementById("enableTextColor");
+var textColorSwatch = document.getElementById("textColorSwatch");
+if (fxVis.textColor && data.textColor) {
+    syncedTextColor = data.textColor;
+    if (textColorCheck) textColorCheck.checked = true;
+    if (textColorSwatch) setSwatchColor(textColorSwatch, data.textColor);
+    // Opacity (khớp với layer.opacity mà Apply sẽ đọc lại)
+    var tcOpacity = (data.textColor.opacity !== undefined && data.textColor.opacity !== null) ? data.textColor.opacity : 100;
+    document.getElementById("textColorOpacity").value = tcOpacity;
+    document.getElementById("textColorOpacityVal").value = Math.round(tcOpacity);
+    // Fill (khớp với layer.fillOpacity mà Apply sẽ đọc lại)
+    var tcFill = (data.textColor.fill !== undefined && data.textColor.fill !== null) ? data.textColor.fill : 100;
+    document.getElementById("textColorFill").value = tcFill;
+    document.getElementById("textColorFillVal").value = Math.round(tcFill);
+} else {
+    syncedTextColor = null;
+    if (textColorCheck) textColorCheck.checked = false;
+    if (textColorSwatch) setSwatchColor(textColorSwatch, {r:0, g:0, b:0});
+    document.getElementById("textColorOpacity").value = 100;
+    document.getElementById("textColorOpacityVal").value = 100;
+    document.getElementById("textColorFill").value = 100;
+    document.getElementById("textColorFillVal").value = 100;
+}
+                // Gradient
                 var gradCheck = document.querySelector('[data-fx="gradientFill"]');
                 if (gradCheck) gradCheck.checked = false;
                 document.getElementById("gradientAngleInput").value = 0;
                 setSwatchColor(document.getElementById("gradientColor1"), {r:255,g:255,b:255});
                 setSwatchColor(document.getElementById("gradientColor2"), {r:255,g:255,b:255});
 
+                // Stroke
                 var frameCheck = document.querySelector('[data-fx="frameFX"]');
                 if (frameCheck) frameCheck.checked = false;
-                document.getElementById("strokeSize1").value = 1;
-                document.getElementById("strokeSize1Val").value = 1;
+                document.getElementById("strokeSize1").value = 2;
+                document.getElementById("strokeSize1Val").value = 2;
                 setSwatchColor(document.getElementById("strokeColor1"), {r:255,g:255,b:255});
+                setSwatchColor(document.getElementById("strokeColor2"), {r:255,g:255,b:255});
 
-                var glowCheck = document.querySelector('[data-fx="outerGlow"]');
-                if (glowCheck) glowCheck.checked = false;
-                document.getElementById("glowOpacity").value = 35; document.getElementById("glowOpacityVal").value = 35;
-                document.getElementById("glowSize").value = 62; document.getElementById("glowSizeVal").value = 62;
-                document.getElementById("glowSpread").value = 16; document.getElementById("glowSpreadVal").value = 16;
-                setSwatchColor(document.getElementById("glowColor"), {r:255,g:255,b:255});
-
-                if (data.gradientFill) {
+               
+                // Bỏ qua sync Gradient nếu đang bị ẩn trong FX Studio
+                if (fxVis.gradientFill && data.gradientFill) {
                     if (gradCheck) gradCheck.checked = data.gradientFill.enabled;
                     document.getElementById("gradientAngleInput").value = data.gradientFill.angle || 0;
                     if (data.gradientFill.colors && data.gradientFill.colors.length > 0) {
@@ -1049,51 +1283,154 @@ on("btnFxSync", "click", function() {
                     drawAngleCircle(data.gradientFill.angle || 0);
                 }
 
-                if (data.strokes && data.strokes.length > 0) {
-                    if (frameCheck) frameCheck.checked = true;
-                    var s1 = data.strokes[0];
-                    document.getElementById("strokeSize1").value = s1.size;
-                    document.getElementById("strokeSize1Val").value = Math.round(s1.size);
-                    setSwatchColor(document.getElementById("strokeColor1"), s1.color);
+                // Bỏ qua sync Stroke nếu đang bị ẩn trong FX Studio
+                if (fxVis.frameFX && data.strokes && data.strokes.length > 0) {
+    if (frameCheck) frameCheck.checked = true;
+    var s1 = data.strokes[0];
+    document.getElementById("strokeSize1").value = s1.size;
+    document.getElementById("strokeSize1Val").value = Math.round(s1.size);
+    // Xử lý position (style)
+    var styleMap = { "outsetFrame": "outsetFrame", "insetFrame": "insetFrame", "centerFrame": "centerFrame" };
+    var styleVal = styleMap[s1.style] || "outsetFrame";
+    document.getElementById("strokePosition").value = styleVal;
+
+
+    // Nếu là gradient
+    if (s1.paintType === "gradientFill" && s1.gradient) {
+        var grad = s1.gradient;
+        document.getElementById("strokeGradientType").value = grad.type || "linear";
+        document.getElementById("strokeAngleInput").value = grad.angle || 0;
+        drawStrokeAngleCircle(grad.angle || 0);
+        if (grad.colors && grad.colors.length >= 2) {
+            setSwatchColor(document.getElementById("strokeColor1"), grad.colors[0]);
+            setSwatchColor(document.getElementById("strokeColor2"), grad.colors[1]);
+        } else if (grad.colors && grad.colors.length === 1) {
+            setSwatchColor(document.getElementById("strokeColor1"), grad.colors[0]);
+            setSwatchColor(document.getElementById("strokeColor2"), null);
+        } else {
+            setSwatchColor(document.getElementById("strokeColor1"), null);
+            setSwatchColor(document.getElementById("strokeColor2"), null);
+        }
+    } else {
+        // solid
+        document.getElementById("strokeGradientType").value = "linear";
+        document.getElementById("strokeAngleInput").value = 0;
+        drawStrokeAngleCircle(0);
+        setSwatchColor(document.getElementById("strokeColor1"), s1.color || null);
+        setSwatchColor(document.getElementById("strokeColor2"), null);
+    }
+}
+
+  
+                  // ===== DROP SHADOW ===== (bỏ qua nếu đang bị ẩn trong FX Studio)
+                var shadowCheck = document.querySelector('[data-fx="dropShadow"]');
+                if (fxVis.dropShadow && data.dropShadow) {
+                    if (shadowCheck) shadowCheck.checked = data.dropShadow.enabled;
+                    document.getElementById("shadowBlendMode").value = data.dropShadow.mode || "normal";
+                    document.getElementById("shadowOpacity").value = data.dropShadow.opacity || 100;
+                    document.getElementById("shadowOpacityVal").value = Math.round(data.dropShadow.opacity || 100);
+                    document.getElementById("shadowAngleInput").value = data.dropShadow.angle || 30;
+                    drawShadowAngleCircle(data.dropShadow.angle || 30);
+                    var syncedDistance = parseFloat(data.dropShadow.distance);
+                    if (isNaN(syncedDistance)) syncedDistance = 0;
+                    document.getElementById("shadowDistance").value = syncedDistance;
+                    document.getElementById("shadowDistanceVal").value = Math.round(syncedDistance);
+                    document.getElementById("shadowSpread").value = data.dropShadow.spread || 20;
+                    document.getElementById("shadowSpreadVal").value = Math.round(data.dropShadow.spread || 20);
+                    document.getElementById("shadowSize").value = data.dropShadow.size || 100;
+                    document.getElementById("shadowSizeVal").value = Math.round(data.dropShadow.size || 100);
+                    setSwatchColor(document.getElementById("shadowColor"), data.dropShadow.color || {r:255, g:255, b:255});
+                } else {
+                    // Reset về mặc định khi layer không có drop shadow
+                    if (shadowCheck) shadowCheck.checked = false;
+                    document.getElementById("shadowBlendMode").value = "normal";
+                    document.getElementById("shadowOpacity").value = 100;
+                    document.getElementById("shadowOpacityVal").value = 100;
+                    document.getElementById("shadowAngleInput").value = 30;
+                    drawShadowAngleCircle(30);
+                    document.getElementById("shadowDistance").value = 0;
+                    document.getElementById("shadowDistanceVal").value = 0;
+                    document.getElementById("shadowSpread").value = 20;
+                    document.getElementById("shadowSpreadVal").value = 20;
+                    document.getElementById("shadowSize").value = 100;
+                    document.getElementById("shadowSizeVal").value = 100;
+                    setSwatchColor(document.getElementById("shadowColor"), {r:255, g:255, b:255});
                 }
 
- // ===== Outer Glow: LUÔN RESET TRƯỚC, CHỈ GHI ĐÈ KHI ENABLED =====
+                // ===== OUTER GLOW ===== (bỏ qua nếu đang bị ẩn trong FX Studio)
                 var glowCheck = document.querySelector('[data-fx="outerGlow"]');
-                // Reset tất cả slider, checkbox và màu về mặc định
-                document.getElementById("glowOpacity").value = 100;
-                document.getElementById("glowOpacityVal").value = 100;
-                document.getElementById("glowSize").value = 20;
-                document.getElementById("glowSizeVal").value = 20;
-                document.getElementById("glowSpread").value = 5;
-                document.getElementById("glowSpreadVal").value = 5;
-                setSwatchColor(document.getElementById("glowColor"), {r:255, g:255, b:255});
-                if (glowCheck) glowCheck.checked = false;
-
-                // Chỉ khi host gửi dữ liệu thực sự (có enabled:true) thì mới ghi đè
-                if (data.outerGlow && data.outerGlow.enabled) {
-                    if (glowCheck) glowCheck.checked = true;
-                    document.getElementById("glowOpacity").value = data.outerGlow.opacity;
-                    document.getElementById("glowOpacityVal").value = Math.round(data.outerGlow.opacity);
-                    document.getElementById("glowSize").value = data.outerGlow.blur;
-                    document.getElementById("glowSizeVal").value = Math.round(data.outerGlow.blur);
-                    document.getElementById("glowSpread").value = data.outerGlow.chokeMatte;
-                    document.getElementById("glowSpreadVal").value = Math.round(data.outerGlow.chokeMatte);
-                    setSwatchColor(document.getElementById("glowColor"), data.outerGlow.color);
+                if (fxVis.outerGlow && data.outerGlow) {
+                    if (glowCheck) glowCheck.checked = data.outerGlow.enabled;
+                    document.getElementById("glowOpacity").value = data.outerGlow.opacity || 100;
+                    document.getElementById("glowOpacityVal").value = Math.round(data.outerGlow.opacity || 100);
+                    document.getElementById("glowSize").value = data.outerGlow.blur || 20;
+                    document.getElementById("glowSizeVal").value = Math.round(data.outerGlow.blur || 20);
+                    document.getElementById("glowSpread").value = data.outerGlow.chokeMatte || 5;
+                    document.getElementById("glowSpreadVal").value = Math.round(data.outerGlow.chokeMatte || 5);
+                    setSwatchColor(document.getElementById("glowColor"), data.outerGlow.color || {r:255, g:255, b:255});
+                } else {
+                    // Reset về mặc định khi layer không có Outer Glow
+                    if (glowCheck) glowCheck.checked = false;
+                    document.getElementById("glowOpacity").value = 100;
+                    document.getElementById("glowOpacityVal").value = 100;
+                    document.getElementById("glowSize").value = 20;
+                    document.getElementById("glowSizeVal").value = 20;
+                    document.getElementById("glowSpread").value = 5;
+                    document.getElementById("glowSpreadVal").value = 5;
+                    setSwatchColor(document.getElementById("glowColor"), {r:255, g:255, b:255});
                 }
 
-                if (btn) flash(btn, "OK");
-            } catch(e) { alert("Lỗi parse JSON: " + e.message); if (btn) flash(btn, "ERROR"); }
+                if (btn && !silent) flash(btn, "OK");
+                if (opts.onDone) opts.onDone(true);
+            } catch(e) {
+                if (!silent) alert("Lỗi parse JSON: " + e.message);
+                if (btn && !silent) flash(btn, "ERROR");
+                if (opts.onDone) opts.onDone(false);
+            }
         });
+}
+on("btnFxSync", "click", function() {
+    if (syncTimeout) clearTimeout(syncTimeout);
+    syncTimeout = setTimeout(function() {
+        performFxSync({ btn: document.getElementById("btnFxSync") });
     }, 200);
 });
 
+// ===================== AUTO FX (độc lập với Auto Load Text) =====================
+// Khi bật: mỗi khi NỘI DUNG CHỮ được load thay đổi -> load lại preview + sync FX cùng lúc, 1 lần.
+// Trong lúc nội dung không đổi (kể cả khi đang chỉnh sửa thông số trong FX Studio), sẽ KHÔNG tự sync lại,
+// tránh ghi đè mất các thay đổi đang thao tác trong FX Studio.
+function autoFxPoll() {
+    cs.evalScript('getText()', function(text) {
+        if (!text || text === "null" || text === "undefined" || text.indexOf("ERROR") === 0) return;
+        if (text === lastAutoFxText) return;
+        lastAutoFxText = text;
+        // Load: cập nhật lưới preview QuickLayout nếu có (không phụ thuộc setting Auto Load Text)
+        if (typeof window.updatePreviewIfNeeded === "function") window.updatePreviewIfNeeded();
+        // Sync: đồng bộ FX vào FX Studio, chạy nền không popup alert
+        performFxSync({ silent: true });
+    });
+}
+function startAutoFx() {
+    if (autoFxInterval) return;
+    lastAutoFxText = null; // đảm bảo lần đầu bật sẽ load + sync ngay 1 lần
+    autoFxPoll();
+    autoFxInterval = setInterval(autoFxPoll, 1500);
+}
+function stopAutoFx() {
+    if (autoFxInterval) { clearInterval(autoFxInterval); autoFxInterval = null; }
+}
+
 // Nút Apply (ghi đè) – hỗ trợ multi-layer, luôn hiển thị spinner
-on("btnFxApply", "click", function() {
-    var btn = this;
+function performFxApply(opts) {
+    opts = opts || {};
+    var btn = opts.btn || document.getElementById("btnFxApply");
+    var silent = !!opts.silent;
     var payload = {};
+    var fxVis = loadFxFeatureVis();
 
     var gradCheck = document.querySelector('[data-fx="gradientFill"]');
-    if (gradCheck && gradCheck.checked) {
+    if (fxVis.gradientFill && gradCheck && gradCheck.checked) {
         payload.gradientFill = {
             enabled: true,
             angle: parseFloat(document.getElementById("gradientAngleInput").value) || 0,
@@ -1102,43 +1439,97 @@ on("btnFxApply", "click", function() {
         };
     }
 
+       // Stroke
     var strokes = [];
     var frameCheck = document.querySelector('[data-fx="frameFX"]');
-    if (frameCheck && frameCheck.checked) {
-        strokes.push({
-            enabled: true,
-            size: parseFloat(document.getElementById("strokeSize1").value) || 1,
-            color: getSwatchColor(document.getElementById("strokeColor1"))
-        });
+    if (fxVis.frameFX && frameCheck && frameCheck.checked) {
+        var color1 = getSwatchColor(document.getElementById("strokeColor1"));
+        var color2 = getSwatchColor(document.getElementById("strokeColor2"));
+        var size = parseFloat(document.getElementById("strokeSize1").value) || 1;
+        var position = document.getElementById("strokePosition").value;
+        var gradientType = document.getElementById("strokeGradientType").value;
+        var angle = parseFloat(document.getElementById("strokeAngleInput").value) || 0;
+        
+        if (color1 || color2) {
+            var stroke = {
+                enabled: true,
+                size: size,
+                style: position // "outsetFrame", "insetFrame", "centerFrame"
+            };
+            if (color1 && color2) {
+                stroke.paintType = "gradientFill";
+                stroke.gradient = {
+                    type: gradientType,
+                    angle: angle,
+                    colors: [color1, color2],
+                    scale: 100
+                };
+            } else {
+                stroke.paintType = "solidColor";
+                stroke.color = color1 || color2;
+            }
+            strokes.push(stroke);
+        }
     }
     if (strokes.length > 0) payload.strokes = strokes;
+    
+   // Drop Shadow
+var shadowCheck = document.querySelector('[data-fx="dropShadow"]');
+if (fxVis.dropShadow && shadowCheck && shadowCheck.checked) {
+    var blendMode = document.getElementById("shadowBlendMode").value;
+    var opacity = parseFloat(document.getElementById("shadowOpacity").value) || 100;
+    var angle = parseFloat(document.getElementById("shadowAngleInput").value) || 30;
+    var distance = parseFloat(document.getElementById("shadowDistance").value);
+    if (isNaN(distance)) distance = 5;
+    var spread = parseFloat(document.getElementById("shadowSpread").value) || 0;
+    var size = parseFloat(document.getElementById("shadowSize").value) || 5;
+    var color = getSwatchColor(document.getElementById("shadowColor"));
+    payload.dropShadow = {
+        enabled: true,
+        mode: blendMode,
+        opacity: opacity,
+        angle: angle,
+        distance: distance,
+        spread: spread,
+        size: size,
+        color: color,
+        useGlobalLight: false
+    };
+}
 
+    // Outer Glow
     var glowCheck = document.querySelector('[data-fx="outerGlow"]');
-    if (glowCheck && glowCheck.checked) {
+    if (fxVis.outerGlow && glowCheck && glowCheck.checked) {
+        var glowOpacity = parseFloat(document.getElementById("glowOpacity").value) || 100;
+        var glowBlur = parseFloat(document.getElementById("glowSize").value) || 20;
+        var glowChoke = parseFloat(document.getElementById("glowSpread").value) || 5;
+        var glowColorVal = getSwatchColor(document.getElementById("glowColor"));
         payload.outerGlow = {
             enabled: true,
-            opacity: parseFloat(document.getElementById("glowOpacity").value) || 100,
-            blur: parseFloat(document.getElementById("glowSize").value) || 10,
-            chokeMatte: parseFloat(document.getElementById("glowSpread").value) || 15,
-            color: getSwatchColor(document.getElementById("glowColor"))
-        };
-    }
-    
-    // Text Color: đọc từ swatch nếu checkbox được bật
-    var textColorCheck = document.getElementById("enableTextColor");
-    if (textColorCheck && textColorCheck.checked) {
-        var tcSwatch = document.getElementById("textColorSwatch");
-        var tc = getSwatchColor(tcSwatch);
-        var fillVal = parseFloat(document.getElementById("textColorFill").value);
-        // fillVal 0-100 → opacity của màu (trộn với trắng)
-        var ratio = fillVal / 100;
-        payload.textColor = {
-            r: Math.round(tc.r * ratio + 255 * (1 - ratio)),
-            g: Math.round(tc.g * ratio + 255 * (1 - ratio)),
-            b: Math.round(tc.b * ratio + 255 * (1 - ratio))
+            opacity: glowOpacity,
+            blur: glowBlur,
+            chokeMatte: glowChoke,
+            color: glowColorVal || {r:255, g:255, b:255}
         };
     }
 
+    // Text Color: đọc từ swatch nếu checkbox được bật
+    var textColorCheck = document.getElementById("enableTextColor");
+    if (fxVis.textColor && textColorCheck && textColorCheck.checked) {
+        var tcSwatch = document.getElementById("textColorSwatch");
+        var tc = getSwatchColor(tcSwatch);
+        var opacity = parseFloat(document.getElementById("textColorOpacity").value) || 100;
+        var fill = parseFloat(document.getElementById("textColorFill").value) || 100;
+        if (tc) {
+            payload.textColor = {
+                r: tc.r,
+                g: tc.g,
+                b: tc.b,
+                opacity: opacity,
+                fill: fill
+            };
+        }
+    }
     var jsonStr = JSON.stringify(payload);
     var spinner = document.getElementById("fxSpinner");
     
@@ -1147,11 +1538,96 @@ on("btnFxApply", "click", function() {
     
     // Gọi apply lên tất cả layer được chọn
     var expr = 'applyFXToSelectedLayers(' + JSON.stringify(jsonStr) + ')';
-    _exec(expr, btn, function(res) {
+    _exec(expr, silent ? null : btn, function(res) {
         if (spinner) spinner.style.display = "none";
-        if (res !== "OK") alert("Apply thất bại: " + res);
+        if (res !== "OK" && !silent) alert("Apply thất bại: " + res);
+        if (opts.onDone) opts.onDone(res === "OK");
     });
+}
+on("btnFxApply", "click", function() {
+    performFxApply({ btn: this });
 });
+
+// ===================== CLEAR – đưa toàn bộ thông số FX Studio về mặc định =====================
+function resetFxStudioToDefaults() {
+    // Gradient
+    var gradCheck = document.querySelector('[data-fx="gradientFill"]');
+    if (gradCheck) gradCheck.checked = false;
+    document.getElementById("gradientAngleInput").value = 0;
+    setSwatchColor(document.getElementById("gradientColor1"), {r:255, g:255, b:255});
+    setSwatchColor(document.getElementById("gradientColor2"), {r:255, g:255, b:255});
+    drawAngleCircle(0);
+
+    // Stroke
+    var frameCheck = document.querySelector('[data-fx="frameFX"]');
+    if (frameCheck) frameCheck.checked = false;
+    document.getElementById("strokeSize1").value = 2;
+    document.getElementById("strokeSize1Val").value = 2;
+    document.getElementById("strokePosition").value = "outsetFrame";
+    document.getElementById("strokeGradientType").value = "linear";
+    document.getElementById("strokeAngleInput").value = 0;
+    drawStrokeAngleCircle(0);
+    setSwatchColor(document.getElementById("strokeColor1"), {r:255, g:255, b:255});
+    setSwatchColor(document.getElementById("strokeColor2"), {r:255, g:255, b:255});
+
+    // Drop Shadow
+    var shadowCheck = document.querySelector('[data-fx="dropShadow"]');
+    if (shadowCheck) shadowCheck.checked = false;
+    document.getElementById("shadowBlendMode").value = "normal";
+    document.getElementById("shadowOpacity").value = 100;
+    document.getElementById("shadowOpacityVal").value = 100;
+    document.getElementById("shadowAngleInput").value = 30;
+    drawShadowAngleCircle(30);
+    document.getElementById("shadowDistance").value = 0;
+    document.getElementById("shadowDistanceVal").value = 0;
+    document.getElementById("shadowSpread").value = 20;
+    document.getElementById("shadowSpreadVal").value = 20;
+    document.getElementById("shadowSize").value = 100;
+    document.getElementById("shadowSizeVal").value = 100;
+    setSwatchColor(document.getElementById("shadowColor"), {r:255, g:255, b:255});
+
+    // Outer Glow
+    var glowCheck = document.querySelector('[data-fx="outerGlow"]');
+    if (glowCheck) glowCheck.checked = false;
+    document.getElementById("glowOpacity").value = 100;
+    document.getElementById("glowOpacityVal").value = 100;
+    document.getElementById("glowSize").value = 20;
+    document.getElementById("glowSizeVal").value = 20;
+    document.getElementById("glowSpread").value = 5;
+    document.getElementById("glowSpreadVal").value = 5;
+    setSwatchColor(document.getElementById("glowColor"), {r:255, g:255, b:255});
+
+    // Text Color
+    var textColorCheck = document.getElementById("enableTextColor");
+    if (textColorCheck) textColorCheck.checked = false;
+    syncedTextColor = null;
+    setSwatchColor(document.getElementById("textColorSwatch"), {r:0, g:0, b:0});
+    document.getElementById("textColorOpacity").value = 100;
+    document.getElementById("textColorOpacityVal").value = 100;
+    document.getElementById("textColorFill").value = 100;
+    document.getElementById("textColorFillVal").value = 100;
+}
+on("btnFxClear", "click", function() {
+    resetFxStudioToDefaults();
+    flash(this, "OK");
+});
+
+// ===================== AUTO APPLY (chỉ hoạt động khi Auto FX đang bật) =====================
+// Khi thay đổi thông số trong FX Studio (checkbox, select, slider lúc thả chuột, xoay angle lúc thả chuột,
+// hoặc chọn màu) -> tự động Apply lại, có debounce để tránh gọi Photoshop liên tục.
+var autoApplyTimeout = null;
+function maybeAutoApply() {
+    if (!loadVis().autoFX) return;
+    if (autoApplyTimeout) clearTimeout(autoApplyTimeout);
+    autoApplyTimeout = setTimeout(function() {
+        performFxApply({ silent: true });
+    }, 300);
+}
+var fxPopupEl = document.getElementById("fxPopup");
+if (fxPopupEl) {
+    // 'change' bắt được: checkbox toggle, select đổi giá trị, và slider/number input LÚC THẢ CHUỘT (không bắn liên tục lúc kéo)
+    fxPopupEl.addEventListener("change", function() { maybeAutoApply(); });
+}
 
 // Nút FG và BG trong color picker popup (dùng cho tất cả swatch)
 function applyPSColorToSwatch(type) {
@@ -1170,6 +1646,7 @@ function applyPSColorToSwatch(type) {
             var popup = document.getElementById("colorPickerPopup");
             if (popup) popup.style.display = "none";
             addRecentColor(c);
+            maybeAutoApply();
         } catch(e) {}
     });
 }
@@ -1275,55 +1752,7 @@ window._prvToolbarMode = 'A';
     switchMode(savedPrvMode);
 })();
 
-// ========== KHỞI ĐỘNG ==========
-(function init() {
-    restoreLayout();
-    var vis = loadVis(); applyVis(vis);
-    var savedLogo = localStorage.getItem("typoCoreLogoPath");
-    if (savedLogo) {
-        cs.evalScript('LOGO_PATH = "' + savedLogo.replace(/"/g, '\\"') + '"');
-        var btnLogo = document.getElementById("btnLogo"); if (btnLogo) btnLogo.title = savedLogo;
-        var actionsSection = document.getElementById('section-actions');
-        if (actionsSection) {
-            var observer = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    if (mutation.attributeName === "style" && fxOverlay.style.display === "flex") {
-                        var saved = localStorage.getItem("typoCoreFxScrollHeight");
-                        if (saved) scrollDiv.style.height = saved + "px";
-                        var savedCollapsed = localStorage.getItem("typoCoreFxCollapsed");
-                        fxCollapsedMode = savedCollapsed === "1";
-                        var toggleBtn = document.getElementById("btnFxToggleMode");
-                        if (toggleBtn) toggleBtn.textContent = fxCollapsedMode ? 'More' : 'Less';
-                        document.querySelectorAll('.fx-section-body').forEach(function(body) {
-                            body.style.maxHeight = fxCollapsedMode ? body.scrollHeight + 'px' : '0';
-                        });
-                    }
-                });
-            });
-            observer.observe(actionsSection, { attributes: true, attributeFilter: ['style'] });
-            var isVisible = window.getComputedStyle(actionsSection).display !== 'none';
-            if (!isVisible) document.body.classList.add('actions-hidden');
-            else document.body.classList.remove('actions-hidden');
-        }
-    }
-    setupSettingPopup();
-    on("addRowBtn", "click", addNewRow);
-    on("saveLayoutBtn", "click", saveAndExitEditMode);
-    setupPreviewPopup();
-
-    if (window._prvToolbarMode === 'A' && window._prvGetPreviewSize) {
-        var ni = document.getElementById("prvNumInput");
-        if (ni) ni.value = window._prvGetPreviewSize();
-    }
-    var savedFxState = localStorage.getItem("typoCoreFxState");
-    if (savedFxState === "open") {
-        var fxOverlay = document.getElementById("fxOverlay");
-        if (fxOverlay) fxOverlay.style.display = "flex";
-    }
-    makeFxResizable();
-    console.log("[TypoCore] Ready");
-})();
-
+// ===== KHỞI ĐỘNG =====
 function makeFxResizable() {
     var scrollDiv = document.querySelector('.fx-scroll');
     var handle = document.querySelector('.fx-resize-handle');
@@ -1357,6 +1786,132 @@ function makeFxResizable() {
         });
         observer.observe(fxOverlay, { attributes: true });
     }
+}
+
+(function init() {
+    restoreLayout();
+    var vis = loadVis(); applyVis(vis);
+    applyFxFeatureVis(loadFxFeatureVis());
+    var savedLogo = localStorage.getItem("typoCoreLogoPath");
+    if (savedLogo) {
+        cs.evalScript('LOGO_PATH = "' + savedLogo.replace(/"/g, '\\"') + '"');
+        var btnLogo = document.getElementById("btnLogo"); if (btnLogo) btnLogo.title = savedLogo;
+        var actionsSection = document.getElementById('section-actions');
+        if (actionsSection) {
+            var isVisible = window.getComputedStyle(actionsSection).display !== 'none';
+            if (!isVisible) document.body.classList.add('actions-hidden');
+            else document.body.classList.remove('actions-hidden');
+        }
+    }
+    setupSettingPopup();
+    on("addRowBtn", "click", addNewRow);
+    on("saveLayoutBtn", "click", saveAndExitEditMode);
+    setupPreviewPopup();
+
+    // Khởi tạo màu mặc định cho các ô màu: trắng, riêng Text Color là đen
+    (function initDefaultSwatches() {
+        var whiteSwatchIds = ["gradientColor1", "gradientColor2", "strokeColor1", "strokeColor2", "shadowColor", "glowColor"];
+        whiteSwatchIds.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el && !el.getAttribute("data-color")) setSwatchColor(el, {r:255, g:255, b:255});
+        });
+        var tcEl = document.getElementById("textColorSwatch");
+        if (tcEl && !tcEl.getAttribute("data-color")) setSwatchColor(tcEl, {r:0, g:0, b:0});
+    })();
+
+    if (vis.autoFX) startAutoFx();
+
+    if (window._prvToolbarMode === 'A' && window._prvGetPreviewSize) {
+        var ni = document.getElementById("prvNumInput");
+        if (ni) ni.value = window._prvGetPreviewSize();
+    }
+    var savedFxState = localStorage.getItem("typoCoreFxState");
+    if (savedFxState === "open") {
+        var fxOverlay = document.getElementById("fxOverlay");
+        if (fxOverlay) fxOverlay.style.display = "flex";
+    }
+    makeFxResizable();
+
+    // Áp dụng trạng thái Less ban đầu
+    if (fxCollapsedMode) {
+        var toggleBtn = document.getElementById("btnFxToggleMode");
+        if (toggleBtn) toggleBtn.textContent = 'More';
+        document.querySelectorAll('.fx-section-body').forEach(function(body) {
+            body.style.maxHeight = '0';
+            body.style.overflow = 'hidden';
+            body.style.padding = '0';
+            body.style.margin = '0';
+        });
+    } else {
+        document.querySelectorAll('.fx-section-body').forEach(function(body) {
+            body.style.maxHeight = body.scrollHeight + 'px';
+            body.style.overflow = '';
+            body.style.padding = '';
+            body.style.margin = '';
+        });
+    }
+    console.log("[TypoCore] Ready");
+})();
+
+// ===== SHADOW ANGLE =====
+var shadowAngleCanvas = document.getElementById("shadowAngleCanvas");
+var shadowAngleInput = document.getElementById("shadowAngleInput");
+var shadowAngleDragging = false;
+
+function drawShadowAngleCircle(deg) {
+    if (!shadowAngleCanvas) return;
+    var ctx = shadowAngleCanvas.getContext("2d");
+    var w = shadowAngleCanvas.width, h = shadowAngleCanvas.height;
+    ctx.clearRect(0, 0, w, h);
+    var cx = w/2, cy = h/2, r = 7;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+    ctx.strokeStyle = "#aaa"; ctx.lineWidth = 1; ctx.stroke();
+    var rad = deg * Math.PI / 180;
+    var x = cx + r * Math.cos(rad);
+    var y = cy - r * Math.sin(rad);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = "#aaa"; ctx.lineWidth = 1; ctx.stroke();
+}
+
+function handleShadowAngleDrag(e) {
+    if (!shadowAngleDragging) return;
+    var rect = shadowAngleCanvas.getBoundingClientRect();
+    var cx = rect.left + rect.width/2;
+    var cy = rect.top + rect.height/2;
+    var dx = e.clientX - cx;
+    var dy = e.clientY - cy;
+    var rad = Math.atan2(-dy, dx);
+    var deg = rad * 180 / Math.PI;
+    if (deg > 180) deg -= 360;
+    if (deg < -180) deg += 360;
+    var val = Math.round(deg);
+    shadowAngleInput.value = val;
+    drawShadowAngleCircle(val);
+}
+
+if (shadowAngleCanvas) {
+    shadowAngleCanvas.addEventListener("mousedown", function(e) {
+        e.preventDefault();
+        shadowAngleDragging = true;
+        handleShadowAngleDrag(e);
+        document.addEventListener("mousemove", handleShadowAngleDrag);
+        document.addEventListener("mouseup", function() {
+            shadowAngleDragging = false;
+            document.removeEventListener("mousemove", handleShadowAngleDrag);
+            maybeAutoApply();
+        });
+    });
+}
+
+if (shadowAngleInput) {
+    shadowAngleInput.addEventListener("input", function() {
+        var deg = parseFloat(this.value) || 0;
+        drawShadowAngleCircle(deg);
+    });
+    drawShadowAngleCircle(parseFloat(shadowAngleInput.value) || 0);
 }
 
 // ========== PANEL SIZE PERSISTENCE ==========
