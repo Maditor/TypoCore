@@ -1,3 +1,11 @@
+### ✨UPDATE TYPOCORE V1.3.2
+* Thêm drop shadow, stroke gradient
+* Nút Copy Paste FX sẽ copy cả fill và opacity của layer text
+* Tự động 'apply' khi bật Auto FX trong Advanced setting
+* Ẩn hiện các chức năng không dùng của fx studio trong hide/unhide tool
+* Thêm 'manual resize box' để quick layout không tính toán mở rộng khung thoại (dùng đối với ảnh resolution khác 72ppi
+
+  
 ### ✨UPDATE TYPOCORE V1.3.1 Fix Bug
 - Sửa Lỗi Quick Layout Preview sai sau khi lượt bớt Layout trùng nhau
 - Xin lỗi các bạn vì chưa kiểm tra kĩ trước khi cập nhật 
