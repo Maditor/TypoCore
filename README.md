@@ -4,24 +4,8 @@
 * Tự động 'apply' khi bật Auto FX trong Advanced setting
 * Ẩn hiện các chức năng không dùng của fx studio trong hide/unhide tool
 * Thêm 'manual resize box' để quick layout không tính toán mở rộng khung thoại (dùng đối với ảnh resolution khác 72ppi
-
+---
   
-### ✨UPDATE TYPOCORE V1.3.1 Fix Bug
-- Sửa Lỗi Quick Layout Preview sai sau khi lượt bớt Layout trùng nhau
-- Xin lỗi các bạn vì chưa kiểm tra kĩ trước khi cập nhật 
----
-### ✨UPDATE TYPOCORE V1.3.1
-
-1. Tích hợp Resize Box vào Quick Layout (Khi chọn kiểu cách dòng sẽ tự điều chỉnh lại khung của Layer Text)
-2. Lượt bớt những kiểu cách dòng trùng nhau trong Quick Layout
-3. Tăng tốc độ Resize Box
-4. Tăng tốc độ của Size-Leading (Mượn ý tưởng từ TypeR)
-5. Sửa Logic của Split Even(phù hợp với thoại vuông và chênh lệch chiều dài từng chữ không quá lớn)
-6. Xoá những chức năng thừa (Resize Box, Check, nút FG BG trong bảng màu)
-
-- Các bạn nhớ sao chép lại Font đang dùng trong Quick Layout để có thể nhập lại nhanh hơn
-
----
 ### 🔹 Hướng Dẫn Cài Đặt
 
 - Tải và giải nén file .zip  
@@ -49,6 +33,23 @@ Hướng Dẫn Sử Dụng: https://youtu.be/Rlx4oNQURAU
 <img width="692" height="388" alt="demo 1" src="https://github.com/user-attachments/assets/18b2e71f-191a-4def-8e75-8dbd4a3f8d16" />
 
 
+
+---
+
+### ✨UPDATE TYPOCORE V1.3.1 Fix Bug
+- Sửa Lỗi Quick Layout Preview sai sau khi lượt bớt Layout trùng nhau
+- Xin lỗi các bạn vì chưa kiểm tra kĩ trước khi cập nhật 
+---
+### ✨UPDATE TYPOCORE V1.3.1
+
+1. Tích hợp Resize Box vào Quick Layout (Khi chọn kiểu cách dòng sẽ tự điều chỉnh lại khung của Layer Text)
+2. Lượt bớt những kiểu cách dòng trùng nhau trong Quick Layout
+3. Tăng tốc độ Resize Box
+4. Tăng tốc độ của Size-Leading (Mượn ý tưởng từ TypeR)
+5. Sửa Logic của Split Even(phù hợp với thoại vuông và chênh lệch chiều dài từng chữ không quá lớn)
+6. Xoá những chức năng thừa (Resize Box, Check, nút FG BG trong bảng màu)
+
+- Các bạn nhớ sao chép lại Font đang dùng trong Quick Layout để có thể nhập lại nhanh hơn
 
 ---
 
