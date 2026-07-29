@@ -889,11 +889,38 @@ function setSwatchColor(el, c) {
         el.style.backgroundSize = "10px 10px";
         el.style.backgroundPosition = "0 0, 5px 5px";
         el.removeAttribute("data-color");
+        if (el.id === "strokeColor2") updateStrokeFieldsVisibility();
         return;
     }
     el.style.backgroundColor = "rgb(" + c.r + "," + c.g + "," + c.b + ")";
     el.style.backgroundImage = "none";
     el.setAttribute("data-color", JSON.stringify(c));
+    if (el.id === "strokeColor2") updateStrokeFieldsVisibility();
+}
+
+// ===================== STROKE: ẩn/hiện Position/Type/Angle theo màu ô bên phải =====================
+// Ô phải (strokeColor2) rỗng => chế độ mặc định: chỉ hiện Size.
+// Ô phải có màu => hiện đầy đủ Position/Type/Angle.
+// Chỉ set display của từng hàng con (không đụng tới maxHeight của .fx-section-body),
+// nên không ảnh hưởng tới cơ chế Less/More (Less/More vẫn tính scrollHeight bình thường
+// dựa trên các hàng đang thực sự hiển thị tại thời điểm đó).
+function updateStrokeFieldsVisibility() {
+    var c2 = getSwatchColor(document.getElementById("strokeColor2"));
+    var full = !!c2;
+    var posRow = document.getElementById("strokePositionRow");
+    var typeRow = document.getElementById("strokeTypeRow");
+    var angleRow = document.getElementById("strokeAngleRow");
+    if (posRow) posRow.style.display = full ? "" : "none";
+    if (typeRow) typeRow.style.display = full ? "" : "none";
+    if (angleRow) angleRow.style.display = full ? "" : "none";
+    // Nếu panel đang mở và không ở chế độ Less (đã có maxHeight cụ thể), cập nhật lại
+    // chiều cao cho khớp nội dung mới, tránh dư/thiếu khoảng trống.
+    if (typeof fxCollapsedMode !== "undefined" && !fxCollapsedMode && posRow) {
+        var body = posRow.closest(".fx-section-body");
+        if (body && body.style.maxHeight && body.style.maxHeight !== "0px") {
+            body.style.maxHeight = body.scrollHeight + "px";
+        }
+    }
 }
 
 function getSwatchColor(el) {
@@ -1268,8 +1295,12 @@ if (fxVis.textColor && data.textColor) {
                 if (frameCheck) frameCheck.checked = false;
                 document.getElementById("strokeSize1").value = 2;
                 document.getElementById("strokeSize1Val").value = 2;
+                document.getElementById("strokePosition").value = "outsetFrame";
+                document.getElementById("strokeGradientType").value = "linear";
+                document.getElementById("strokeAngleInput").value = 0;
+                drawStrokeAngleCircle(0);
                 setSwatchColor(document.getElementById("strokeColor1"), {r:255,g:255,b:255});
-                setSwatchColor(document.getElementById("strokeColor2"), {r:255,g:255,b:255});
+                setSwatchColor(document.getElementById("strokeColor2"), null);
 
                
                 // Bỏ qua sync Gradient nếu đang bị ẩn trong FX Studio
@@ -1397,9 +1428,11 @@ on("btnFxSync", "click", function() {
 });
 
 // ===================== AUTO FX (độc lập với Auto Load Text) =====================
-// Khi bật: mỗi khi NỘI DUNG CHỮ được load thay đổi -> load lại preview + sync FX cùng lúc, 1 lần.
-// Trong lúc nội dung không đổi (kể cả khi đang chỉnh sửa thông số trong FX Studio), sẽ KHÔNG tự sync lại,
-// tránh ghi đè mất các thay đổi đang thao tác trong FX Studio.
+// Khi bật: chỉ tự động APPLY thông số đang chỉnh trong FX Studio xuống layer đang chọn
+// (qua maybeAutoApply, được gọi mỗi khi người dùng đổi giá trị trong panel).
+// KHÔNG còn tự động SYNC (đọc ngược FX từ layer vào panel) khi đổi layer/nội dung chữ,
+// để tránh ghi đè thông số người dùng đang chỉnh trong FX Studio.
+// Vẫn cập nhật preview QuickLayout khi nội dung chữ thay đổi (không liên quan tới sync FX).
 function autoFxPoll() {
     cs.evalScript('getText()', function(text) {
         if (!text || text === "null" || text === "undefined" || text.indexOf("ERROR") === 0) return;
@@ -1407,8 +1440,6 @@ function autoFxPoll() {
         lastAutoFxText = text;
         // Load: cập nhật lưới preview QuickLayout nếu có (không phụ thuộc setting Auto Load Text)
         if (typeof window.updatePreviewIfNeeded === "function") window.updatePreviewIfNeeded();
-        // Sync: đồng bộ FX vào FX Studio, chạy nền không popup alert
-        performFxSync({ silent: true });
     });
 }
 function startAutoFx() {
@@ -1568,7 +1599,7 @@ function resetFxStudioToDefaults() {
     document.getElementById("strokeAngleInput").value = 0;
     drawStrokeAngleCircle(0);
     setSwatchColor(document.getElementById("strokeColor1"), {r:255, g:255, b:255});
-    setSwatchColor(document.getElementById("strokeColor2"), {r:255, g:255, b:255});
+    setSwatchColor(document.getElementById("strokeColor2"), null);
 
     // Drop Shadow
     var shadowCheck = document.querySelector('[data-fx="dropShadow"]');
@@ -1810,11 +1841,14 @@ function makeFxResizable() {
 
     // Khởi tạo màu mặc định cho các ô màu: trắng, riêng Text Color là đen
     (function initDefaultSwatches() {
-        var whiteSwatchIds = ["gradientColor1", "gradientColor2", "strokeColor1", "strokeColor2", "shadowColor", "glowColor"];
+        var whiteSwatchIds = ["gradientColor1", "gradientColor2", "strokeColor1", "shadowColor", "glowColor"];
         whiteSwatchIds.forEach(function(id) {
             var el = document.getElementById(id);
             if (el && !el.getAttribute("data-color")) setSwatchColor(el, {r:255, g:255, b:255});
         });
+        // Stroke: ô bên phải mặc định RỖNG (không có màu)
+        var strokeColor2El = document.getElementById("strokeColor2");
+        if (strokeColor2El && !strokeColor2El.getAttribute("data-color")) setSwatchColor(strokeColor2El, null);
         var tcEl = document.getElementById("textColorSwatch");
         if (tcEl && !tcEl.getAttribute("data-color")) setSwatchColor(tcEl, {r:0, g:0, b:0});
     })();
