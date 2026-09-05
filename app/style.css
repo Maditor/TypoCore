@@ -175,6 +175,596 @@ button.flash-err {
 }
 
 /* ============================================================
+   PASTE TEXT (Texter — TyperTools bridge)
+   ============================================================ */
+.tt-big-btn {
+    display: block;
+    width: 100%;
+    height: 32px;
+    margin-bottom: 8px;
+    background: #288edf;
+    border-color: #134f7f;
+    color: #fff;
+    font-weight: 700;
+}
+.tt-big-btn:hover { background: #4ca1e4; }
+.tt-big-btn:active { background: #1e7dc8; }
+
+.tt-styles-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+.tt-styles-toolbar-title {
+    flex: 1;
+    font-size: 11px;
+    color: #999;
+}
+
+/* ---- preview-bottom: nav ▲▼ + preview-current ---- */
+.tt-preview-bottom {
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.tt-preview-nav {
+    flex: 0 0 auto;
+    width: 22px;
+    display: flex;
+    flex-direction: column;
+}
+.tt-preview-nav button {
+    height: 17px;
+    width: 22px;
+    padding: 0;
+    font-size: 9px;
+}
+.tt-preview-nav button + button { margin-top: 2px; }
+
+.tt-preview-current {
+    flex-grow: 2;
+    min-width: 0;
+    height: 36px;
+    border: 1px solid #555;
+    border-radius: 6px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+}
+
+.tt-preview-line-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255,255,255,0.06);
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    padding: 1px 3px 1px 5px;
+    flex: 0 0 auto;
+}
+
+.tt-preview-line-info-text {
+    flex-grow: 2;
+    min-width: 0;
+    font-size: 9px;
+    color: #ccc;
+    opacity: 0.6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.tt-preview-line-info-text b { font-size: 9px; color: #fff; }
+
+.tt-preview-line-style-name {
+    display: inline-block;
+    max-width: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+    white-space: nowrap;
+    margin-left: 3px;
+}
+
+.tt-preview-line-info-color {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-left: 4px;
+    border: 1px solid rgba(255,255,255,0.8);
+    border-radius: 50%;
+    box-shadow: 0 0 3px 1px rgba(0,0,0,0.4);
+    background: #888;
+    position: relative;
+    top: 1px;
+}
+
+.tt-preview-line-text {
+    flex-grow: 2;
+    font-size: 10px;
+    letter-spacing: 0.3px;
+    color: #fff;
+    padding: 2px 5px;
+    overflow: auto;
+    word-break: break-word;
+}
+
+/* ---- text-block: MỘT ô duy nhất — textarea trong suốt đè lên nền số dòng/highlight ----
+   Chiều cao CỐ ĐỊNH (không tự phình theo nội dung) — chỉnh bằng thanh kéo .tt-text-resize-handle */
+.tt-text-block {
+    position: relative;
+    border: 1px solid #444;
+    border-radius: 3px 3px 0 0;
+    background: #1a1a1a;
+    height: 90px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.tt-text-resize-handle {
+    flex-shrink: 0;
+    height: 5px;
+    background: #555;
+    cursor: ns-resize;
+    border-radius: 0 0 3px 3px;
+    margin-bottom: 6px;
+}
+.tt-text-resize-handle:hover { background: #777; }
+
+/* Custom scrollbar cho ô dán chữ — đồng bộ với .fx-scroll */
+.tt-text-block::-webkit-scrollbar { width: 7px; height: 7px; background: #1a1a1a; }
+.tt-text-block::-webkit-scrollbar-track { background: #2b2b2b; }
+.tt-text-block::-webkit-scrollbar-thumb { background: #777; border-radius: 2px; }
+.tt-text-block::-webkit-scrollbar-thumb:hover { background: #555; }
+.tt-text-block::-webkit-scrollbar-corner { background: #1a1a1a; }
+
+/* ---- Vùng cuộn của cả section Texter Studio (text-block + styles) — đồng bộ .fx-scroll/.fx-resize-handle ---- */
+.tt-texter-scroll {
+    overflow-y: auto;
+    height: 220px;
+    padding-bottom: 2px;
+    padding-right: 8px;
+}
+.tt-texter-scroll::-webkit-scrollbar { width: 7px; height: 7px; background: #1a1a1a; }
+.tt-texter-scroll::-webkit-scrollbar-track { background: #2b2b2b; }
+.tt-texter-scroll::-webkit-scrollbar-thumb { background: #777; border-radius: 2px; }
+.tt-texter-scroll::-webkit-scrollbar-thumb:hover { background: #555; }
+.tt-texter-scroll::-webkit-scrollbar-corner { background: #1a1a1a; }
+
+.tt-resize-handle {
+    flex-shrink: 0;
+    height: 5px;
+    background: #555;
+    cursor: ns-resize;
+    margin-top: 2px;
+}
+.tt-resize-handle:hover { background: #777; }
+
+/* Lớp nền: số dòng bên trái + vệt highlight dòng hiện tại + icon dán riêng dòng bên phải.
+   Nằm dưới (z-index thấp) nhưng 2 cột gutter KHÔNG bị textarea che vì textarea hẹp hơn (margin 2 bên). */
+.tt-text-lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1;
+}
+
+.tt-text-line-row {
+    display: flex;
+    align-items: stretch;
+    border-top: 1px dashed #2c2c2c;
+}
+.tt-text-line-row:first-child { border-top: none; }
+
+.tt-text-line-row.m-current { background: rgba(40,142,223,0.28); }
+.tt-text-line-row.m-hover:not(.m-current) { background: rgba(255,255,255,0.07); }
+
+.tt-text-line-num {
+    flex: 0 0 24px;
+    align-self: flex-start;
+    text-align: right;
+    padding-right: 4px;
+    line-height: 18px;
+    color: #777;
+    font-size: 10px;
+    cursor: pointer;
+}
+.tt-text-line-num:hover { color: #fff; }
+
+.tt-text-line-fill { flex: 1 1 auto; }
+
+.tt-text-line-insert {
+    flex: 0 0 20px;
+    width: 20px;
+    height: 16px;
+    align-self: flex-start;
+    margin-top: 1px;
+    margin-right: 2px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 9px;
+    line-height: 1;
+    position: relative;
+    z-index: 3;
+}
+
+/* Lớp trên: textarea thật, nội dung gõ/dán hiển thị ở đây.
+   Hẹp hơn container (margin-left = độ rộng cột số, margin-right = độ rộng icon)
+   => 2 gutter bên dưới không bị che, vẫn bấm được.
+   Xuống dòng MỀM theo khung (wrap="soft"); chỉ Enter (\n) mới được tính là 1 dòng mới
+   trong logic tách dòng — xuống dòng do chật khung chỉ là hiển thị, JS vẫn coi là 1 dòng. */
+.tt-text-area {
+    position: relative;
+    z-index: 2;
+    display: block;
+    width: calc(100% - 24px - 22px);
+    margin-left: 24px;
+    box-sizing: border-box;
+    background: transparent;
+    color: #ddd;
+    border: none;
+    padding: 0 2px;
+    font-size: 11px;
+    font-family: monospace;
+    line-height: 18px;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    overflow: hidden;
+    resize: none;
+}
+
+/* Div ẩn dùng để đo chiều cao thật của 1 dòng khi bị wrap theo khung hiện tại */
+.tt-text-measure {
+    position: absolute;
+    top: 0;
+    left: 0;
+    visibility: hidden;
+    height: auto;
+    z-index: -1;
+    width: calc(100% - 24px - 22px);
+    margin-left: 24px;
+    box-sizing: border-box;
+    padding: 0 2px;
+    font-size: 11px;
+    font-family: monospace;
+    line-height: 18px;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+
+
+/* ---- styles-block: folder header (thu gọn/mở rộng) + nút + Add style nhỏ + style grid ---- */
+.tt-folder-item {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.tt-folder-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 6px;
+    cursor: pointer;
+    font-size: 11px;
+    color: #ccc;
+    background: rgba(0,0,0,0.35);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.tt-folder-marker {
+    flex: 0 0 auto;
+    width: 12px;
+    transition: transform 0.15s;
+    opacity: 0.6;
+}
+
+.tt-folder-actions {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 3px;
+}
+.tt-folder-actions button {
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    font-size: 8px;
+    line-height: 1;
+}
+.tt-folder-item.collapsed .tt-folder-marker { transform: rotate(-90deg); }
+.tt-folder-item.collapsed .tt-styles-list { display: none; }
+.tt-folder-item.collapsed .tt-folder-header { border-bottom: none; }
+
+.tt-folder-title {
+    flex-grow: 2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.2px;
+}
+.tt-folder-count {
+    font-size: 10px;
+    opacity: 0.5;
+    margin-left: 4px;
+}
+
+.tt-folder-add-btn {
+    flex: 0 0 auto;
+    min-width: 42px;
+    height: 20px;
+    padding: 0 10px;
+    font-size: 12px;
+    line-height: 1;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.tt-folder-add-btn svg {
+    display: block;
+}
+
+.tt-styles-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px;
+}
+
+.tt-style-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 5px 5px 5px 7px;
+    font-size: 12px;
+    color: #ccc;
+    opacity: 0.85;
+    cursor: pointer;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.09);
+}
+/* Panel rộng từ 400px trở lên -> chia 2 cột, tối đa 2 cột (không chia thêm dù panel rộng hơn nữa) */
+@media (min-width: 400px) {
+    .tt-style-item {
+        width: calc(50% - 3px);
+    }
+}
+.tt-style-item:hover { opacity: 1; outline: 1px solid rgba(255,255,255,0.3); }
+
+.tt-style-item.m-current {
+    background: #288edf;
+    color: #fff;
+    opacity: 1;
+    outline: 1px solid #134f7f;
+    border-color: #134f7f;
+}
+
+.tt-style-dot {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #888;
+    border: 1px solid rgba(255,255,255,0.8);
+    box-shadow: 0 0 4px 1px rgba(0,0,0,0.4);
+}
+.tt-style-item.m-current .tt-style-dot { border-color: #1a1a1a; }
+
+.tt-style-name {
+    flex-grow: 2;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+}
+
+.tt-style-actions {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 3px;
+}
+.tt-style-actions button {
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    font-size: 9px;
+    line-height: 1;
+}
+
+.tt-style-empty {
+    padding: 10px 6px;
+    text-align: center;
+    color: #666;
+    font-size: 10px;
+    width: 100%;
+}
+
+/* ---- Style Edit Panel ---- */
+.tt-style-edit-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.75);
+    /* Cao hơn hẳn Quick Layout/FX Studio (z-index 1000) để backdrop tối luôn phủ lên trên,
+       nhưng vẫn thấp hơn color picker popup (100000) phòng khi cần mở picker đè lên trên panel. */
+    z-index: 50000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 10%;
+}
+
+.tt-style-edit-panel {
+    width: 90%;
+    max-width: 320px;
+    background: #2a2a2a;
+    border: 1px solid #555;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+}
+
+.tt-style-edit-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    background: #222;
+    font-size: 12px;
+    font-weight: 700;
+    color: #eee;
+}
+
+.tt-style-edit-x {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    font-size: 11px;
+}
+
+.tt-style-edit-body {
+    padding: 10px;
+}
+
+.tt-style-edit-row {
+    display: block;
+    margin-bottom: 8px;
+}
+.tt-style-edit-row span {
+    display: block;
+    font-size: 10px;
+    color: #999;
+    margin-bottom: 3px;
+}
+.tt-style-edit-row input[type="text"],
+.tt-style-edit-row input[type="number"],
+.tt-style-edit-row select {
+    width: 100%;
+    box-sizing: border-box;
+    height: 26px;
+    background: #1a1a1a;
+    color: #ddd;
+    border: 1px solid #444;
+    border-radius: 3px;
+    padding: 0 6px;
+    font-size: 11px;
+}
+.tt-style-edit-row input[type="color"] {
+    width: 100%;
+    height: 26px;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 3px;
+    padding: 2px;
+}
+
+.tt-style-edit-copybtn {
+    width: 100%;
+    height: 28px;
+    margin-bottom: 6px;
+    background: #288edf;
+    color: #fff;
+    border-color: #134f7f;
+}
+.tt-style-edit-copybtn:hover { background: #4ca1e4; }
+
+.tt-style-edit-warning {
+    font-size: 10px;
+    color: #d8a33a;
+    background: rgba(216,163,58,0.1);
+    border: 1px solid rgba(216,163,58,0.3);
+    border-radius: 3px;
+    padding: 6px 8px;
+    margin-bottom: 4px;
+}
+
+.tt-style-edit-row2 {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.tt-style-edit-row2 label { flex: 1; display: block; }
+.tt-style-edit-row2 label span {
+    display: block;
+    font-size: 10px;
+    color: #999;
+    margin-bottom: 3px;
+}
+.tt-style-edit-row2 input {
+    width: 100%;
+    box-sizing: border-box;
+    height: 26px;
+    background: #1a1a1a;
+    color: #ddd;
+    border: 1px solid #444;
+    border-radius: 3px;
+    padding: 0 6px;
+    font-size: 11px;
+}
+
+.tt-style-edit-align-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+.tt-style-edit-align-row span {
+    font-size: 10px;
+    color: #999;
+    flex-shrink: 0;
+}
+.tt-align-btn-small {
+    flex: 1;
+    height: 24px;
+    font-size: 10px;
+}
+.tt-align-btn-small.active {
+    background: #288edf;
+    color: #fff;
+    border-color: #134f7f;
+}
+
+.tt-style-edit-footer {
+    display: flex;
+    gap: 6px;
+    padding: 8px 10px;
+    background: #222;
+}
+.tt-style-edit-footer button {
+    flex: 1;
+    height: 28px;
+}
+.tt-style-edit-footer .tt-big-btn {
+    width: auto;
+    margin-right: 0;
+}
+.tt-style-edit-delete {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    color: #e08a8a;
+    border-color: #5a3030;
+    background: #3a2424;
+}
+.tt-style-edit-delete:hover { background: #4a2c2c; }
+
+
+/* ============================================================
    ACTION GRID (Sortable)
    ============================================================ */
 .action-grid {
@@ -226,6 +816,47 @@ button.flash-err {
     position: relative;
     display: inline-block;
 }
+
+.mb-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #666;
+    margin-right: 5px;
+    vertical-align: middle;
+    transition: background 0.15s;
+}
+.mb-dot.mb-active {
+    background: #3ecf5e;
+    box-shadow: 0 0 4px 1px rgba(62,207,94,0.6);
+}
+
+.mb-info-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 3px 0;
+    font-size: 10px;
+    color: #ccc;
+    background: rgba(62,207,94,0.08);
+    border: 1px solid rgba(62,207,94,0.25);
+    border-radius: 3px;
+}
+#mbInfoCount { font-weight: 700; color: #3ecf5e; }
+.mb-info-sep { color: #555; }
+.mb-info-link {
+    background: none;
+    border: none;
+    color: #ccc;
+    text-decoration: underline;
+    font-size: 10px;
+    padding: 0;
+    height: auto;
+    cursor: pointer;
+}
+.mb-info-link:hover { color: #fff; }
 
 .setting-btn {
     background: none;
@@ -280,6 +911,12 @@ button.flash-err {
 .setting-item input[type="checkbox"] {
     margin-right: 8px;
 }
+
+.tt-setting-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.tt-setting-disabled:hover { background: none; }
 
 .setting-separator {
     border-top: 1px solid #555;
@@ -1385,6 +2022,11 @@ button.flash-err {
 }
 
 #btnOpenFX {
+    height: 24px !important;
+    font-size: 11px;
+}
+
+#btnOpenTexter {
     height: 24px !important;
     font-size: 11px;
 }

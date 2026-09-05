@@ -36,7 +36,7 @@
 	<div class="preview-header">
           <button id="btnPreviewLoad">Load</button>
           <button id="btnPreviewToggle">Horizontal</button>
-          <button id="btnPreviewMode" title="Đổi chế độ toolbar">⇆</button>
+          <button id="btnPreviewMode" title="Toggle toolbar mode">⇆</button>
         </div>
         <div class="preview-grid" id="previewGrid"></div>
 	<div class="resize-handle" style="height: 5px; background: #555; cursor: ns-resize; border-radius: 0 0 6px 6px;"></div>
@@ -93,7 +93,7 @@
           <div class="fx-section-header">
             <label><input type="checkbox" class="fx-enable" data-fx="gradientFill"> Gradient</label>
             <div class="fx-swatches">
-              <button class="quick-fgbg" title="Lấy FG cho màu 1, BG cho màu 2">🌢</button>
+              <button class="quick-fgbg" title="FG for color 1, BG for color 2">🌢</button>
               <div class="color-swatch" id="gradientColor1" title="Color 1"></div>
               <div class="color-swatch" id="gradientColor2" title="Color 2"></div>
             </div>
@@ -275,7 +275,122 @@
   </div><!-- /fxOverlay -->
 </div><!-- /section-fx -->
 
+<div class="section" id="section-texter" data-drag-id="texter">
+  <button id="btnOpenTexter" style="width:100%;">Texter Studio</button>
+  <div id="texterOverlay" style="display:none; margin-top:4px;">
+
+    <input type="file" id="importStylesFile" accept=".json" style="display:none;">
+
+    <div class="tt-preview-bottom">
+      <div class="tt-preview-nav">
+        <button id="btnLinePrev">▲</button>
+        <button id="btnLineNext">▼</button>
+      </div>
+      <div class="tt-preview-current">
+        <div class="tt-preview-line-info">
+          <div class="tt-preview-line-info-text">
+            <b id="pasteCurrentLineNum">line: 0</b>
+            <span class="tt-preview-line-style-name" id="pasteCurrentStyleName">--</span>
+            <span class="tt-preview-line-info-color" id="pasteCurrentColorDot"></span>
+          </div>
+        </div>
+        <div class="tt-preview-line-text" id="pasteLineCurrent"></div>
+      </div>
+    </div>
+
+    <!-- Cố định ngay dưới khung preview — KHÔNG cuộn theo, chỉ phần Style bên dưới mới cuộn -->
+    <div class="tt-text-block" id="pasteTextBlock">
+      <div class="tt-text-lines" id="pasteLineList"></div>
+      <textarea id="pasteTextInput" class="tt-text-area" rows="2" wrap="soft" placeholder="Paste your translation here..."></textarea>
+      <div class="tt-text-measure" id="pasteTextMeasure"></div>
+    </div>
+    <div class="tt-text-resize-handle" id="pasteTextResizeHandle"></div>
+
+    <div class="tt-texter-scroll" id="texterScroll">
+      <div class="tt-styles-toolbar">
+        <span class="tt-styles-toolbar-title">Styles</span>
+        <button id="btnAddFolder" class="tt-folder-add-btn" title="New folder"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z"/></svg></button>
+        <button id="btnSaveTextPreset" class="tt-folder-add-btn" title="Add style">+</button>
+      </div>
+      <div id="stylesFoldersContainer"></div>
+    </div>
+    <div class="tt-resize-handle" id="texterResizeHandle"></div>
+
+  </div>
+</div>
+
+<!-- STYLE EDIT PANEL -->
+<div id="styleEditOverlay" class="tt-style-edit-overlay" style="display:none;">
+  <div class="tt-style-edit-panel">
+    <div class="tt-style-edit-header">
+      <span id="styleEditTitle">Style</span>
+      <button id="btnStyleEditClose" class="tt-style-edit-x">✕</button>
+    </div>
+    <div class="tt-style-edit-body">
+      <label class="tt-style-edit-row">
+        <span>Name</span>
+        <input type="text" id="styleEditName" placeholder="e.g. Title 60px">
+      </label>
+      <label class="tt-style-edit-row">
+        <span>Folder</span>
+        <select id="styleEditFolder"></select>
+      </label>
+
+      <button id="btnStyleEditCopyFromLayer" class="tt-style-edit-copybtn">⤓ Copy style from active layer</button>
+
+      <div class="tt-style-edit-fields" id="styleEditFields" style="display:none;">
+        <label class="tt-style-edit-row">
+          <span>Font</span>
+          <select id="styleEditFont"></select>
+        </label>
+        <div class="tt-style-edit-row2">
+          <label><span>Size (pt)</span><input type="number" id="styleEditSize" min="1" step="0.5"></label>
+          <label><span>Leading (pt)</span><input type="number" id="styleEditLeading" min="0" step="0.5" placeholder="auto"></label>
+        </div>
+        <div class="tt-style-edit-row2" id="styleEditAutoLeadingRow">
+          <label><span>Auto leading %</span><input type="number" id="styleEditAutoLeadingPct" min="0" step="1" placeholder="120"></label>
+        </div>
+        <label class="tt-style-edit-row">
+          <span>Color</span>
+          <input type="color" id="styleEditColor">
+        </label>
+        <div class="tt-style-edit-align-row">
+          <span>Align</span>
+          <button type="button" id="styleEditAlignLeft" class="tt-align-btn-small" data-align="left">Left</button>
+          <button type="button" id="styleEditAlignCenter" class="tt-align-btn-small" data-align="center">Center</button>
+          <button type="button" id="styleEditAlignRight" class="tt-align-btn-small" data-align="right">Right</button>
+        </div>
+      </div>
+    </div>
+    <div class="tt-style-edit-footer">
+      <button id="btnStyleEditDelete" class="tt-style-edit-delete" style="display:none;">Delete</button>
+      <button id="btnStyleEditCancel">Cancel</button>
+      <button id="btnStyleEditSave" class="tt-big-btn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT CHOICE DIALOG -->
+<div id="importChoiceOverlay" class="tt-style-edit-overlay" style="display:none;">
+  <div class="tt-style-edit-panel" style="max-width:280px;">
+    <div class="tt-style-edit-header">
+      <span>Import styles</span>
+    </div>
+    <div class="tt-style-edit-body" style="font-size:11px; color:#ccc; line-height:1.6;">
+      You already have styles/folders saved.<br><br>
+      Delete them and import fresh, or keep them and just add the new ones?
+    </div>
+    <div class="tt-style-edit-footer">
+      <button id="btnImportChoiceDelete" class="tt-style-edit-delete">Delete</button>
+      <button id="btnImportChoiceKeep" class="tt-big-btn">Keep</button>
+    </div>
+  </div>
+</div>
+
+
 <div class="section" id="section-split" data-drag-id="split">
+
+
   <div class="section-title">Split Even</div>
   <div class="split-row">
     <button onclick="splitEven(2)">2 lines</button>
@@ -310,9 +425,19 @@
       <button id="addRowBtn" style="flex: 1; height: 28px;">[+] Add Row</button>
       <button id="saveLayoutBtn" style="flex: 1; height: 28px;">🖫 Save</button>
     </div>
+    <div id="mbInfoBar" class="mb-info-bar" style="display:none;">
+      <span id="mbInfoCount">0 selected</span>
+      <span class="mb-info-sep">—</span>
+      <button id="btnMBPause" class="mb-info-link">Pause</button>
+      <span class="mb-info-sep">—</span>
+      <button id="btnMBClear" class="mb-info-link">Clear</button>
+    </div>
     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
       <span class="footer-credit">TypoCore By Maditor</span>
-      <div class="setting-wrapper">
+      <div class="setting-wrapper" style="display:flex; align-items:center; gap:6px;">
+        <button class="setting-btn" id="btnMultipleBubble" title="Multiple Bubble">
+          <span id="mbDot" class="mb-dot"></span>MB
+        </button>
         <button class="setting-btn" id="settingBtn">Setting</button>
         <div class="setting-popup" id="settingPopup">
         <div class="setting-item" data-action="chooseLogo"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;flex-shrink:0;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Choose Logo</div>
@@ -335,7 +460,25 @@
           <div class="setting-item" data-toggle="autoFX" style="padding-left:24px;">
             <input type="checkbox" id="toggle_autoFX"> Auto FX
           </div>
+          <div class="setting-item" style="padding-left:24px;">
+            <input type="checkbox" id="toggle_linkQuickLayoutTexter"> Link Q.Layout to Texter
+          </div>
+          <div class="setting-item" style="padding-left:24px;">
+            <input type="checkbox" id="toggle_fixMBPosition"> Fix MB position
+          </div>
+          <div class="setting-item" style="padding-left:24px;">
+            <input type="checkbox" id="toggle_snapMultiBubble"> Snap Multi Bubble
+          </div>
         </div>
+<div class="setting-separator"></div>
+<div class="setting-item" id="textSettingToggle" style="cursor: pointer; justify-content: space-between;">
+    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;flex-shrink:0;"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>Texter Setting</span>
+    <span id="textSettingArrow" style="font-size: 10px;">▼</span>
+</div>
+<div id="textSettingSub" style="display: none;">
+    <div class="setting-item" data-action="importStylesMain" style="padding-left:24px; cursor:pointer;">⇩ Import styles...</div>
+    <div class="setting-item" data-action="exportStylesMain" style="padding-left:24px; cursor:pointer;">⇧ Export styles...</div>
+</div>
 <div class="setting-separator"></div>
 <div class="setting-item" id="layoutManagerToggle" style="cursor: pointer; justify-content: space-between;">
     <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;flex-shrink:0;"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>Panel Manager</span>
@@ -353,6 +496,9 @@
         <div id="toolManagerSub" style="display: none;">
   <div class="setting-item" data-toggle="quickLayout">
     <input type="checkbox" id="toggle_quickLayout"> Quick Layout
+  </div>
+  <div class="setting-item" data-toggle="texterStudio">
+    <input type="checkbox" id="toggle_texterStudio"> Texter Studio
   </div>
   <div class="setting-item" style="justify-content: space-between; padding-right: 8px;">
     <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">

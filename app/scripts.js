@@ -69,6 +69,21 @@ function getCasePreview(text, n) {
     }
     return lines.join("\n");
 }
+// Danh sách các kiểu cách dòng (đã lọc trùng) cho 1 đoạn text — dùng chung cho lưới Quick Layout
+// VÀ cho phím tắt Win+Ctrl khi bật "Link Quick Layout to Texter" (luôn lấy items[0] = kiểu ĐẦU TIÊN).
+function buildCasePreviewItems(text) {
+    var caseNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    var seen = {};
+    var items = [];
+    for (var n = 0; n < caseNumbers.length; n++) {
+        var caseNum = caseNumbers[n];
+        var formatted = getCasePreview(text, caseNum);
+        if (seen[formatted]) continue;
+        seen[formatted] = true;
+        items.push({ case: caseNum, text: formatted });
+    }
+    return items;
+}
 
 (function() {
     try {
@@ -106,10 +121,10 @@ function _exec(expr, btn, onDone) {
 }
 function runBtn(expr, el) { _exec(expr, el); }
 
-var BAD = { "ERROR":1, "NO_LAYER":1, "NO_FX":1, "NO_PATH":1, "NO_FILE":1, "NO_DOC":1, "NO_TEXT":1, "NO_OTHER_DOC":1 };
+var BAD = { "ERROR":1, "NO_LAYER":1, "NO_FX":1, "NO_PATH":1, "NO_FILE":1, "NO_DOC":1, "NO_TEXT":1, "NO_OTHER_DOC":1, "NO_STYLE":1 };
 function flash(btn, result) {
     if (!btn) return;
-    var bad = !result || BAD[result] || (result+"").includes("ERROR");
+    var bad = !result || BAD[result] || (result+"").includes("ERROR") || (result+"").indexOf("ERR:") === 0;
     btn.classList.remove("flash-ok", "flash-err");
     btn.classList.add(bad ? "flash-err" : "flash-ok");
     setTimeout(function() { btn.classList.remove("flash-ok", "flash-err"); }, 500);
@@ -134,10 +149,1022 @@ function doPasteFX() {
     });
 }
 
+// ========== DÁN CHỮ (TyperTools bridge) — theo cấu trúc thật của TyperTool ==========
+var TEXT_PRESETS_KEY = "typoCoreTextPresets";
+var _pasteLines = [];      // [{rawIndex, rawText, text, ignore}]
+var _pasteLineIdx = -1;    // rawIndex của dòng hiện tại
+
+function loadTextPresets() {
+    try {
+        var raw = localStorage.getItem(TEXT_PRESETS_KEY);
+        if (raw) {
+            var data = JSON.parse(raw);
+            if (!data.folders) data.folders = {}; // tương thích dữ liệu cũ chưa có folder
+            return data;
+        }
+    } catch (e) {}
+    return { presets: {}, folders: {}, defaultId: null };
+}
+function saveTextPresets(data) {
+    try { localStorage.setItem(TEXT_PRESETS_KEY, JSON.stringify(data)); } catch (e) {}
+}
+function getCurrentPreset() {
+    var data = loadTextPresets();
+    if (data.defaultId && data.presets[data.defaultId]) return data.presets[data.defaultId];
+    var ids = Object.keys(data.presets);
+    return ids.length ? data.presets[ids[0]] : null;
+}
+function getPresetBaseSize(preset) {
+    try { return preset.style.textProps.layerText.textStyleRange[0].textStyle.size; } catch (e) { return null; }
+}
+function getPresetColorCss(preset) {
+    try {
+        var c = preset.style.textProps.layerText.textStyleRange[0].textStyle.color;
+        if (c && "red" in c) return "rgb(" + Math.round(c.red) + "," + Math.round(c.green) + "," + Math.round(c.blue) + ")";
+    } catch (e) {}
+    return "#888";
+}
+// Giữ tên hàm để các chỗ gọi (doPasteToSelection, pasteSpecificLineToLayer, applyStyleToActiveLayer)
+// không phải sửa — nay chỉ trả về đúng style gốc của preset, không còn % scale.
+function scaledStyle(preset) {
+    return preset ? preset.style : null;
+}
+
+// ---------- Danh sách Style, nhóm theo Folder (giống Unsorted/My Project của TyperTool) ----------
+var UNSORTED_KEY = "__unsorted__"; // folder ảo chứa style chưa gán folder nào
+function renderStyleList() {
+    var container = document.getElementById("stylesFoldersContainer");
+    if (!container) return;
+    var scrollBox = document.getElementById("texterScroll");
+    var savedScroll = scrollBox ? scrollBox.scrollTop : 0;
+    var data = loadTextPresets();
+    container.innerHTML = "";
+
+    var groups = {}; // folderKey -> [presetId,...]
+    groups[UNSORTED_KEY] = [];
+    Object.keys(data.folders).forEach(function(fid) { groups[fid] = []; });
+    Object.keys(data.presets).forEach(function(id) {
+        var fid = data.presets[id].folder;
+        if (fid && groups[fid]) groups[fid].push(id);
+        else groups[UNSORTED_KEY].push(id);
+    });
+
+    if (!Object.keys(data.presets).length) {
+        var empty = document.createElement("div");
+        empty.className = "tt-style-empty";
+        empty.textContent = "No styles yet — select a text layer and click \"+ Add style\"";
+        container.appendChild(empty);
+        updateCurrentMeta();
+        if (scrollBox) scrollBox.scrollTop = savedScroll;
+        return;
+    }
+
+    // Unsorted trước, rồi tới các folder thật theo thứ tự đã tạo
+    renderFolderBlock(container, UNSORTED_KEY, "Unsorted", groups[UNSORTED_KEY], data, false);
+    Object.keys(data.folders).forEach(function(fid) {
+        renderFolderBlock(container, fid, data.folders[fid].name, groups[fid], data, true);
+    });
+    updateCurrentMeta();
+    if (scrollBox) scrollBox.scrollTop = savedScroll;
+}
+function renderFolderBlock(container, folderKey, folderName, presetIds, data, isRealFolder) {
+    if (isRealFolder === false && !presetIds.length) return; // ẩn "Unsorted" khi rỗng cho gọn
+    var item = document.createElement("div");
+    item.className = "tt-folder-item";
+
+    var header = document.createElement("div");
+    header.className = "tt-folder-header";
+
+    var marker = document.createElement("span");
+    marker.className = "tt-folder-marker";
+    marker.textContent = "▾";
+
+    var title = document.createElement("span");
+    title.className = "tt-folder-title";
+    title.textContent = folderName + " (" + presetIds.length + ")";
+
+    header.appendChild(marker);
+    header.appendChild(title);
+
+    if (isRealFolder) {
+        var actions = document.createElement("span");
+        actions.className = "tt-folder-actions";
+        var renameBtn = document.createElement("button");
+        renameBtn.textContent = "✎";
+        renameBtn.title = "Rename folder";
+        renameBtn.addEventListener("click", function(e) { e.stopPropagation(); renameFolder(folderKey); });
+        var delBtn = document.createElement("button");
+        delBtn.textContent = "×";
+        delBtn.title = "Delete folder (styles move to Unsorted)";
+        delBtn.addEventListener("click", function(e) { e.stopPropagation(); deleteFolder(folderKey); });
+        actions.appendChild(renameBtn);
+        actions.appendChild(delBtn);
+        header.appendChild(actions);
+    } else if (presetIds.length) {
+        // Unsorted là folder ảo, không xóa/đổi tên được — chỉ có nút xóa nhanh toàn bộ style trong đó
+        var uActions = document.createElement("span");
+        uActions.className = "tt-folder-actions";
+        var clearBtn = document.createElement("button");
+        clearBtn.textContent = "×";
+        clearBtn.title = "Delete all Unsorted styles";
+        clearBtn.addEventListener("click", function(e) { e.stopPropagation(); clearUnsortedStyles(); });
+        uActions.appendChild(clearBtn);
+        header.appendChild(uActions);
+    }
+    header.addEventListener("click", function() { item.classList.toggle("collapsed"); });
+
+    var list = document.createElement("div");
+    list.className = "tt-styles-list";
+    presetIds.forEach(function(id) { list.appendChild(buildStyleItemEl(id, data)); });
+    if (!presetIds.length) {
+        var emptyMsg = document.createElement("div");
+        emptyMsg.className = "tt-style-empty";
+        emptyMsg.textContent = "(empty)";
+        list.appendChild(emptyMsg);
+    }
+
+    item.appendChild(header);
+    item.appendChild(list);
+    container.appendChild(item);
+}
+// TyperTool KHÔNG set qua element.style.fontFamily (JS property) — nó nhét font-family vào
+// một <span> con bằng chuỗi HTML (dangerouslySetInnerHTML). Cách JS property đôi khi bị trình
+// duyệt âm thầm từ chối với vài tên font đặc biệt (dấu ngoặc, số ở đầu...), còn set qua chuỗi
+// HTML attribute thì luôn ăn. Làm y hệt cách đó.
+function escapeHtml(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function fontFamilyAttrSafe(fontName) {
+    // an toàn cho style='font-family: "X"'
+    return String(fontName).replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+}
+function setTextWithFontFamily(el, text, fontName) {
+    if (fontName) {
+        el.innerHTML = "<span style='font-family: \"" + fontFamilyAttrSafe(fontName) + "\"'>" + escapeHtml(text) + "</span>";
+    } else {
+        el.textContent = text;
+    }
+}
+function buildStyleItemEl(id, data) {
+    var p = data.presets[id];
+    var row = document.createElement("div");
+    row.className = "tt-style-item" + (data.defaultId === id ? " m-current" : "");
+
+    var dot = document.createElement("span");
+    dot.className = "tt-style-dot";
+    dot.style.background = getPresetColorCss(p);
+
+    var name = document.createElement("span");
+    name.className = "tt-style-name";
+    setTextWithFontFamily(name, p.name, p.previewFont);
+    if (p.previewFont) {
+        name.title = "Preview font: " + p.previewFont;
+    } else {
+        name.title = "No preview font yet — open ✎ Edit and Save to generate one.";
+    }
+
+    var actions = document.createElement("span");
+    actions.className = "tt-style-actions";
+    var editBtn = document.createElement("button");
+    editBtn.textContent = "✎";
+    editBtn.title = "Edit";
+    editBtn.addEventListener("click", function(e) { e.stopPropagation(); editStylePreset(id); });
+    var applyBtn = document.createElement("button");
+    applyBtn.textContent = "←";
+    applyBtn.title = "Apply to selected layer";
+    applyBtn.addEventListener("click", function(e) { e.stopPropagation(); applyStyleToActiveLayer(id, applyBtn); });
+    actions.appendChild(editBtn);
+    actions.appendChild(applyBtn);
+
+    row.appendChild(dot);
+    row.appendChild(name);
+    row.appendChild(actions);
+    row.addEventListener("click", function() { selectStylePreset(id); });
+    return row;
+}
+function selectStylePreset(id) {
+    var data = loadTextPresets();
+    if (!data.presets[id]) return;
+    data.defaultId = id;
+    saveTextPresets(data);
+    renderStyleList();
+}
+function editStylePreset(id) {
+    openStyleEditor(id);
+}
+function deleteStylePreset(id) {
+    if (!confirm("Delete this style?")) return;
+    var data = loadTextPresets();
+    delete data.presets[id];
+    if (data.defaultId === id) {
+        var rest = Object.keys(data.presets);
+        data.defaultId = rest.length ? rest[0] : null;
+    }
+    saveTextPresets(data);
+    renderStyleList();
+}
+function doSaveTextPreset() {
+    openStyleEditor(null);
+}
+
+// ---------- Folder ----------
+function doAddFolder() {
+    var name = prompt("New folder name:");
+    if (!name || !name.trim()) return;
+    var data = loadTextPresets();
+    var fid = "f" + Date.now();
+    data.folders[fid] = { name: name.trim() };
+    saveTextPresets(data);
+    renderStyleList();
+    renderFolderOptionsInEditor(); // nếu panel edit đang mở, cập nhật luôn dropdown
+}
+function renameFolder(fid) {
+    var data = loadTextPresets();
+    if (!data.folders[fid]) return;
+    var name = prompt("Folder name:", data.folders[fid].name);
+    if (!name || !name.trim()) return;
+    data.folders[fid].name = name.trim();
+    saveTextPresets(data);
+    renderStyleList();
+}
+function deleteFolder(fid) {
+    var data = loadTextPresets();
+    if (!data.folders[fid]) return;
+    if (!confirm('Delete folder "' + data.folders[fid].name + '"? Its styles will move to Unsorted.')) return;
+    delete data.folders[fid];
+    Object.keys(data.presets).forEach(function(id) {
+        if (data.presets[id].folder === fid) delete data.presets[id].folder;
+    });
+    saveTextPresets(data);
+    renderStyleList();
+}
+function clearUnsortedStyles() {
+    var data = loadTextPresets();
+    var unsortedIds = Object.keys(data.presets).filter(function(id) { return !data.presets[id].folder; });
+    if (!unsortedIds.length) return;
+    if (!confirm("Delete all " + unsortedIds.length + " Unsorted style(s)? This cannot be undone.")) return;
+    unsortedIds.forEach(function(id) { delete data.presets[id]; });
+    if (data.defaultId && !data.presets[data.defaultId]) {
+        var rest = Object.keys(data.presets);
+        data.defaultId = rest.length ? rest[0] : null;
+    }
+    saveTextPresets(data);
+    renderStyleList();
+}
+
+// ========== IMPORT / EXPORT (định dạng file export của TyperTool) ==========
+// Định dạng gốc: {ignoreLinePrefixes, defaultStyleId, folders:[{name,id}], styles:[{name,folder,textProps,id,...}]}
+// Giờ đã đọc/ghi được folder thật (không còn ghép tên "Folder: Style" như bản trước).
+// Các field style-level khác của TyperTool (stroke, prefixes, prefixColor) CHƯA được hỗ trợ, sẽ bị bỏ qua khi import.
+function handleImportStylesFile(file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var raw;
+        try { raw = JSON.parse(e.target.result); } catch (err) { alert("File is not valid JSON."); return; }
+        if (!raw || !Array.isArray(raw.styles)) { alert("File is not a valid TyperTool export."); return; }
+
+        var data = loadTextPresets();
+        var hasExisting = Object.keys(data.presets).length > 0 || Object.keys(data.folders).length > 0;
+        if (hasExisting) {
+            showImportChoiceDialog(function(deleteExisting) {
+                proceedImport(raw, deleteExisting ? { presets: {}, folders: {}, defaultId: null } : data);
+            });
+        } else {
+            proceedImport(raw, data);
+        }
+    };
+    reader.readAsText(file);
+}
+function proceedImport(raw, data) {
+    // Map folder id trong file -> folder id thật trong TypoCore.
+    // Nếu đã có sẵn 1 folder cùng TÊN thì dùng lại (tránh tạo trùng khi import nhiều lần).
+    var folderIdMap = {};
+    (raw.folders || []).forEach(function(f, idx) {
+        var existingId = Object.keys(data.folders).find(function(fid) { return data.folders[fid].name === f.name; });
+        if (existingId) {
+            folderIdMap[f.id] = existingId;
+        } else {
+            var newFid = "f" + Date.now() + "_" + idx;
+            data.folders[newFid] = { name: f.name };
+            folderIdMap[f.id] = newFid;
+        }
+    });
+
+    var importedCount = 0;
+    var idMap = {}; // id style cũ trong file -> id mới trong TypoCore
+    raw.styles.forEach(function(s) {
+        if (!s || !s.textProps) return;
+        var newId = "p" + Date.now() + "_" + importedCount;
+        var preset = { name: s.name || "Untitled", style: { textProps: s.textProps } };
+        if (s.folder && folderIdMap[s.folder]) preset.folder = folderIdMap[s.folder];
+        // Suy ra previewFont y hệt lúc lưu tay ở Edit Style, để style import cũng hiện đúng font.
+        try {
+            var ts = s.textProps.layerText.textStyleRange[0].textStyle;
+            var derived = deriveDisplayFontName(ts.fontName || ts.fontPostScriptName);
+            if (derived) preset.previewFont = derived;
+        } catch (e) {}
+        data.presets[newId] = preset;
+        if (s.id) idMap[s.id] = newId;
+        importedCount++;
+    });
+    if (!importedCount) { alert("No styles found in the file to import."); return; }
+
+    // Nếu chưa có style mặc định nào sẵn -> lấy defaultStyleId từ file làm mặc định
+    if (!data.defaultId && raw.defaultStyleId && idMap[raw.defaultStyleId]) {
+        data.defaultId = idMap[raw.defaultStyleId];
+    }
+    saveTextPresets(data);
+
+    // ignoreLinePrefixes (VD: "##") — dòng bắt đầu bằng các prefix này sẽ bị bỏ qua khi tách dòng
+    if (Array.isArray(raw.ignoreLinePrefixes) && raw.ignoreLinePrefixes.length) {
+        try { localStorage.setItem("typoCoreIgnoreLinePrefixes", JSON.stringify(raw.ignoreLinePrefixes)); } catch (err) {}
+    }
+
+    renderStyleList();
+    refreshPasteLines(); // áp lại ignoreLinePrefixes mới (nếu có) cho nội dung đang gõ
+    alert("Imported " + importedCount + " style" + (importedCount > 1 ? "s" : "") + ".");
+}
+// Hộp thoại tùy chỉnh 2 nút rõ nghĩa (Delete / Keep) thay cho confirm() OK/Cancel dễ nhầm
+function showImportChoiceDialog(callback) {
+    var overlay = document.getElementById("importChoiceOverlay");
+    if (!overlay) { callback(false); return; } // fallback an toàn nếu thiếu markup: mặc định Keep
+    overlay.style.display = "flex";
+    var deleteBtn = document.getElementById("btnImportChoiceDelete");
+    var keepBtn = document.getElementById("btnImportChoiceKeep");
+    function cleanup() {
+        overlay.style.display = "none";
+        deleteBtn.removeEventListener("click", onDelete);
+        keepBtn.removeEventListener("click", onKeep);
+    }
+    function onDelete() { cleanup(); callback(true); }
+    function onKeep() { cleanup(); callback(false); }
+    deleteBtn.addEventListener("click", onDelete);
+    keepBtn.addEventListener("click", onKeep);
+}
+function doExportStyles() {
+    var data = loadTextPresets();
+    var presetIds = Object.keys(data.presets);
+    if (!presetIds.length) { alert("No styles to export yet."); return; }
+    var folders = Object.keys(data.folders).map(function(fid) {
+        return { name: data.folders[fid].name, id: fid, chosen: false, selected: false };
+    });
+    var styles = presetIds.map(function(id) {
+        var p = data.presets[id];
+        return {
+            name: p.name,
+            folder: p.folder || undefined,
+            textProps: p.style.textProps,
+            // Các field dưới đây TypoCore không có khái niệm tương ứng, nhưng TyperTool THẬT
+            // luôn ghi ra đủ các field này cho mỗi style — thiếu là file export không đọc lại
+            // được trong TyperTool (code của nó không phòng trường hợp field bị undefined).
+            // Điền giá trị mặc định/vô hại (tắt/rỗng) để giữ đúng hình dạng dữ liệu gốc.
+            prefixes: [],
+            prefixColor: "#FFFFFF",
+            stroke: { enabled: false, size: 0, opacity: 100, position: "outer", color: { r: 255, g: 255, b: 255 } },
+            id: id,
+            edited: Date.now(),
+            chosen: false,
+            selected: false
+        };
+    });
+    var out = {
+        ignoreLinePrefixes: getIgnoreLinePrefixes(),
+        defaultStyleId: data.defaultId || undefined,
+        folders: folders,
+        styles: styles,
+        version: "1.4.9", // khớp version thật của TyperTool để tránh bị từ chối/parse sai khi import lại
+        exported: new Date().toISOString()
+    };
+    var jsonText = JSON.stringify(out, null, 2);
+    _exec('saveTextFile(' + JSON.stringify(jsonText) + ', ' + JSON.stringify("export-typocore.json") + ')', null, function(res) {
+        if (res === "CANCELLED") return; // người dùng tự bấm Cancel trên hộp thoại, không phải lỗi
+        if (res === "OK") { alert("Export saved successfully."); return; }
+        alert("Export failed: " + res);
+    });
+}
+
+// ========== STYLE EDIT PANEL (Font / Size / Leading / Color / Alignment) ==========
+// Bám theo form "Edit Style" thật của TyperTool. Vì dựng 1 textProps hợp lệ từ đầu
+// (textShape, textStyleRange, paragraphStyleRange...) rất dễ sai định dạng descriptor
+// của Photoshop, nên mọi style BẮT BUỘC phải xuất phát từ 1 style "lấy từ layer đang chọn"
+// (TT_getActiveStyle) — sau đó các field Font/Size/Leading/Color/Alignment chỉ GHI ĐÈ
+// lên đúng những field đó trong style đã capture, phần còn lại (leading, kerning...) giữ nguyên.
+var _editingStyleId = null;   // null = đang tạo style mới
+var _editingBaseStyle = null; // style JSON đã capture (hoặc đang sửa)
+var _editingAlign = "left";
+var _editingFolder = null;    // id folder đang chọn cho style này (null = Unsorted)
+var _userFontsCache = null;
+
+function openStyleEditor(id) {
+    _editingStyleId = id;
+    _editingBaseStyle = null;
+    _editingAlign = "left";
+    var data = loadTextPresets();
+    var existing = id ? data.presets[id] : null;
+    _editingFolder = existing ? (existing.folder || null) : null;
+
+    document.getElementById("styleEditTitle").textContent = existing ? "Edit Style" : "New Style";
+    document.getElementById("styleEditName").value = existing ? existing.name : "";
+    document.getElementById("styleEditFields").style.display = "none";
+    document.getElementById("btnStyleEditDelete").style.display = existing ? "block" : "none";
+    renderFolderOptionsInEditor();
+
+    if (existing) {
+        _editingBaseStyle = JSON.parse(JSON.stringify(existing.style)); // clone, không sửa preset gốc cho tới khi Lưu
+        populateStyleEditFields();
+    }
+    loadUserFontsIfNeeded();
+    document.getElementById("styleEditOverlay").style.display = "flex";
+}
+// Đổ danh sách folder vào dropdown chọn folder trong panel edit, chọn đúng folder đang gán cho style
+function renderFolderOptionsInEditor() {
+    var sel = document.getElementById("styleEditFolder");
+    if (!sel) return;
+    var data = loadTextPresets();
+    sel.innerHTML = "";
+    var noneOpt = document.createElement("option");
+    noneOpt.value = "";
+    noneOpt.textContent = "(No folder)";
+    sel.appendChild(noneOpt);
+    Object.keys(data.folders).forEach(function(fid) {
+        var opt = document.createElement("option");
+        opt.value = fid;
+        opt.textContent = data.folders[fid].name;
+        sel.appendChild(opt);
+    });
+    sel.value = _editingFolder || "";
+}
+// Từ tên font Photoshop hiển thị (VD "MTO Augie Regular") suy ra tên dùng để PREVIEW bằng CSS
+// (VD "MTO Augie") — chỉ bỏ đúng đuôi "Regular"/"Normal" thừa ở cuối, còn lại giữ nguyên y hệt
+// (VD "000 AnimeAce3 [TeddyBear]" không có đuôi này thì không đổi gì cả).
+function deriveDisplayFontName(rawName) {
+    if (!rawName) return null;
+    var suffixWords = ["Regular", "Normal"];
+    for (var i = 0; i < suffixWords.length; i++) {
+        var re = new RegExp("[\\s\\-]" + suffixWords[i] + "$", "i");
+        if (re.test(rawName)) return rawName.replace(re, "").trim();
+    }
+    return rawName;
+}
+function closeStyleEditor() {
+    document.getElementById("styleEditOverlay").style.display = "none";
+}
+function loadUserFontsIfNeeded() {
+    var sel = document.getElementById("styleEditFont");
+    if (_userFontsCache) { fillFontSelect(sel); return; }
+    cs.evalScript('TT_getUserFonts()', function(res) {
+        try {
+            var data = JSON.parse(res);
+            _userFontsCache = (data && data.fonts) ? data.fonts : [];
+        } catch (e) { _userFontsCache = []; }
+        fillFontSelect(sel);
+    });
+}
+function fillFontSelect(sel) {
+    if (!sel || sel.dataset.filled === "1") { restoreFontSelectValue(); return; }
+    sel.innerHTML = "";
+    (_userFontsCache || []).forEach(function(f) {
+        var opt = document.createElement("option");
+        opt.value = f.postScriptName || f.name;
+        opt.textContent = f.name;
+        sel.appendChild(opt);
+    });
+    sel.dataset.filled = "1";
+    restoreFontSelectValue();
+}
+function restoreFontSelectValue() {
+    if (!_editingBaseStyle) return;
+    try {
+        var ts = _editingBaseStyle.textProps.layerText.textStyleRange[0].textStyle;
+        var sel = document.getElementById("styleEditFont");
+        var want = ts.fontPostScriptName || ts.fontName;
+        if (want) sel.value = want;
+    } catch (e) {}
+}
+function populateStyleEditFields() {
+    try {
+        var ts = _editingBaseStyle.textProps.layerText.textStyleRange[0].textStyle;
+        document.getElementById("styleEditSize").value = ts.size !== undefined ? Math.round(ts.size * 100) / 100 : "";
+        // Leading rỗng = auto (Photoshop tự tính ~120% size). Có số = leading cố định (pt), tắt auto.
+        document.getElementById("styleEditLeading").value = (!ts.autoLeading && ts.leading) ? ts.leading : "";
+        var c = ts.color;
+        document.getElementById("styleEditColor").value = c ? rgbToHex(c.red, c.green, c.blue) : "#ffffff";
+        restoreFontSelectValue();
+    } catch (e) {}
+    var autoPct = 120;
+    try {
+        var pAuto = _editingBaseStyle.textProps.layerText.paragraphStyleRange[0].paragraphStyle.autoLeadingPercentage;
+        if (pAuto) autoPct = Math.round(pAuto * 100);
+    } catch (e) {}
+    document.getElementById("styleEditAutoLeadingPct").value = autoPct;
+    updateAutoLeadingRowVisibility();
+    try {
+        var ps = _editingBaseStyle.textProps.layerText.paragraphStyleRange[0].paragraphStyle;
+        _editingAlign = ps.alignment || "left";
+    } catch (e) { _editingAlign = "left"; }
+    setAlignButtonsUI(_editingAlign);
+    document.getElementById("styleEditFields").style.display = "block";
+}
+// Chỉ hiện ô "Auto leading %" khi Leading đang để trống (đang ở chế độ auto) — giống TyperTool
+function updateAutoLeadingRowVisibility() {
+    var leadingVal = document.getElementById("styleEditLeading").value;
+    var row = document.getElementById("styleEditAutoLeadingRow");
+    if (row) row.style.display = leadingVal ? "none" : "flex";
+}
+function setAlignButtonsUI(align) {
+    ["Left", "Center", "Right"].forEach(function(a) {
+        var btn = document.getElementById("styleEditAlign" + a);
+        if (btn) btn.classList.toggle("active", a.toLowerCase() === align);
+    });
+}
+function doStyleEditCopyFromLayer() {
+    var btn = document.getElementById("btnStyleEditCopyFromLayer");
+    cs.evalScript('TT_getActiveStyle()', function(res) {
+        if (!res) { alert("Could not read style — select a text layer in Photoshop and try again."); return; }
+        try { _editingBaseStyle = JSON.parse(res); } catch (e) { alert("Invalid style data returned."); return; }
+        populateStyleEditFields();
+    });
+}
+function rgbToHex(r, g, b) {
+    function h(n) { n = Math.max(0, Math.min(255, Math.round(n || 0))); var s = n.toString(16); return s.length < 2 ? "0" + s : s; }
+    return "#" + h(r) + h(g) + h(b);
+}
+function hexToRgb(hex) {
+    var m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || "");
+    if (!m) return { red: 255, green: 255, blue: 255 };
+    return { red: parseInt(m[1], 16), green: parseInt(m[2], 16), blue: parseInt(m[3], 16) };
+}
+// Ghi các field đang chỉnh vào bản style đã capture (chỉ ghi đè field liên quan, giữ nguyên phần khác)
+function applyStyleEditFieldsToBase() {
+    if (!_editingBaseStyle) return;
+    var leadingStr = document.getElementById("styleEditLeading").value;
+    var leadingVal = parseFloat(leadingStr);
+    var hasLeading = leadingStr !== "" && !isNaN(leadingVal) && leadingVal > 0;
+    var autoPctVal = parseFloat(document.getElementById("styleEditAutoLeadingPct").value);
+    try {
+        var ranges = _editingBaseStyle.textProps.layerText.textStyleRange;
+        var fontSel = document.getElementById("styleEditFont");
+        var sizeVal = parseFloat(document.getElementById("styleEditSize").value);
+        var colorVal = hexToRgb(document.getElementById("styleEditColor").value);
+        var fontOpt = fontSel && fontSel.selectedOptions && fontSel.selectedOptions[0];
+        for (var i = 0; i < ranges.length; i++) {
+            var ts = ranges[i].textStyle;
+            if (!ts) continue;
+            if (!isNaN(sizeVal) && sizeVal > 0) ts.size = sizeVal;
+            if (hasLeading) {
+                ts.autoLeading = false;
+                ts.leading = leadingVal;
+            } else {
+                ts.autoLeading = true;
+                delete ts.leading;
+            }
+            ts.color = colorVal;
+            if (fontOpt) {
+                ts.fontPostScriptName = fontOpt.value;
+                ts.fontName = fontOpt.textContent;
+            }
+        }
+    } catch (e) {}
+    try {
+        var pranges = _editingBaseStyle.textProps.layerText.paragraphStyleRange;
+        for (var j = 0; j < pranges.length; j++) {
+            if (!pranges[j].paragraphStyle) continue;
+            pranges[j].paragraphStyle.alignment = _editingAlign;
+            // Auto leading % chỉ có ý nghĩa khi đang auto (không nhập Leading cố định)
+            if (!hasLeading && !isNaN(autoPctVal) && autoPctVal > 0) {
+                pranges[j].paragraphStyle.autoLeadingPercentage = autoPctVal / 100;
+            }
+        }
+    } catch (e) {}
+}
+function doStyleEditSave() {
+    var name = document.getElementById("styleEditName").value.trim();
+    if (!name) { alert("Enter a name for the style."); return; }
+    if (!_editingBaseStyle) { alert("No style data yet — click \"Copy style from active layer\" first."); return; }
+    applyStyleEditFieldsToBase();
+    var data = loadTextPresets();
+    var id = _editingStyleId || ("p" + Date.now());
+    var preset = { name: name, style: _editingBaseStyle };
+    if (_editingFolder) preset.folder = _editingFolder;
+    // Tự suy ra tên font để PREVIEW từ đúng font đang chọn trong dropdown Font (đã copy từ layer
+    // hoặc người dùng đổi tay), áp cùng cách xử lý đuôi "Regular" như Quick Layout đang làm.
+    var fontSel = document.getElementById("styleEditFont");
+    var fontOpt = fontSel && fontSel.selectedOptions && fontSel.selectedOptions[0];
+    if (fontOpt) {
+        var derived = deriveDisplayFontName(fontOpt.textContent);
+        if (derived) preset.previewFont = derived;
+    }
+    data.presets[id] = preset;
+    data.defaultId = id; // style vừa lưu -> chọn làm current luôn
+    saveTextPresets(data);
+    closeStyleEditor();
+    renderStyleList();
+}
+on("styleEditFolder", "change", function(e) { _editingFolder = e.target.value || null; });
+on("btnStyleEditCopyFromLayer", "click", doStyleEditCopyFromLayer);
+on("styleEditLeading", "input", updateAutoLeadingRowVisibility);
+on("btnStyleEditSave", "click", doStyleEditSave);
+on("btnStyleEditCancel", "click", closeStyleEditor);
+on("btnStyleEditDelete", "click", function() {
+    if (!_editingStyleId) return;
+    var id = _editingStyleId;
+    deleteStylePreset(id); // hàm này đã có confirm() riêng
+    // Nếu người dùng bấm OK ở confirm thì preset đã bị xoá khỏi storage -> đóng panel
+    var data = loadTextPresets();
+    if (!data.presets[id]) closeStyleEditor();
+});
+on("btnStyleEditClose", "click", closeStyleEditor);
+on("styleEditAlignLeft", "click", function() { _editingAlign = "left"; setAlignButtonsUI(_editingAlign); });
+on("styleEditAlignCenter", "click", function() { _editingAlign = "center"; setAlignButtonsUI(_editingAlign); });
+on("styleEditAlignRight", "click", function() { _editingAlign = "right"; setAlignButtonsUI(_editingAlign); });
+
+// ---------- Tách dòng & duyệt dòng (live, không cần bấm nút tách) ----------
+function getIgnoreLinePrefixes() {
+    try {
+        var raw = localStorage.getItem("typoCoreIgnoreLinePrefixes");
+        if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return [];
+}
+function splitPasteLines(raw) {
+    var rawLines = raw.split(/\r\n|\r|\n/);
+    var ignorePrefixes = getIgnoreLinePrefixes();
+    return rawLines.map(function(line, idx) {
+        var trimmed = line.replace(/\s+/g, " ").trim();
+        var hasIgnorePrefix = ignorePrefixes.some(function(p) { return p && line.indexOf(p) === 0; });
+        return { rawIndex: idx, rawText: line, text: trimmed, ignore: !trimmed || hasIgnorePrefix };
+    });
+}
+function visiblePasteLines() {
+    return _pasteLines.filter(function(l) { return !l.ignore; });
+}
+function currentLineText() {
+    if (_pasteLineIdx < 0) return null;
+    for (var i = 0; i < _pasteLines.length; i++) {
+        if (_pasteLines[i].rawIndex === _pasteLineIdx) return _pasteLines[i].text;
+    }
+    return null;
+}
+// TyperTool (bản gốc) không tra cứu gì thêm — nó dùng thẳng fontName làm font-family CSS
+// (xem hàm H() trong index.js gốc: fontFamily = e.fontName). Làm y hệt cho đúng, bỏ phần
+// tra ngược qua app.fonts đã thêm nhầm trước đó.
+function getPresetFontFamily(preset) {
+    try {
+        var ts = preset.style.textProps.layerText.textStyleRange[0].textStyle;
+        var candidates = [];
+        function add(n) { if (n && candidates.indexOf(n) === -1) candidates.push(n); }
+        // Ưu tiên cao nhất: tra ngược qua danh sách font thật của máy (app.fonts, khớp theo
+        // postScriptName) — đây là nguồn ĐÁNG TIN nhất vì lấy trực tiếp từ hệ thống, không
+        // phải tên nội bộ Photoshop lưu trong style (có thể không khớp CSS font-family).
+        if (_userFontsCache && ts.fontPostScriptName) {
+            for (var i = 0; i < _userFontsCache.length; i++) {
+                if (_userFontsCache[i].postScriptName === ts.fontPostScriptName) {
+                    add(_userFontsCache[i].family);
+                    add(_userFontsCache[i].name);
+                    break;
+                }
+            }
+        }
+        // Rồi mới tới tên GỐC Photoshop lưu, giữ nguyên y hệt.
+        add(ts.fontName);
+        add(ts.fontPostScriptName);
+        // Dự phòng cuối: nếu tên có đuôi style thừa kiểu "MTO Augie Regular" thì thử bỏ đuôi.
+        var suffixWords = ["Regular", "Normal"];
+        [ts.fontName, ts.fontPostScriptName].forEach(function(n) {
+            if (!n) return;
+            suffixWords.forEach(function(w) {
+                var re = new RegExp("[\\s\\-]" + w + "$", "i");
+                if (re.test(n)) add(n.replace(re, "").trim());
+            });
+        });
+        return candidates.length ? candidates : null;
+    } catch (e) { return null; }
+}
+function fontFamilyCss(candidates) {
+    if (!candidates || !candidates.length) return "";
+    return candidates.map(function(n) { return '"' + n + '"'; }).join(", ") + ", inherit";
+}
+function updateCurrentMeta() {
+    var numEl = document.getElementById("pasteCurrentLineNum");
+    var styleEl = document.getElementById("pasteCurrentStyleName");
+    var dotEl = document.getElementById("pasteCurrentColorDot");
+    var sizeEl = document.getElementById("pasteTextPresetSize");
+    var curEl = document.getElementById("pasteLineCurrent");
+    if (!numEl) return;
+    var preset = getCurrentPreset();
+    var visible = visiblePasteLines();
+    var pos = -1;
+    for (var i = 0; i < visible.length; i++) if (visible[i].rawIndex === _pasteLineIdx) { pos = i; break; }
+    numEl.textContent = "line: " + (pos >= 0 ? (pos + 1) : 0) + "/" + visible.length;
+    if (styleEl) styleEl.textContent = preset ? preset.name : "--";
+    if (dotEl) dotEl.style.background = preset ? getPresetColorCss(preset) : "#888";
+    if (sizeEl) {
+        var size = preset ? getPresetBaseSize(preset) : null;
+        sizeEl.textContent = (size !== null && size !== undefined) ? Math.round(size) : "--";
+    }
+    if (curEl) {
+        setTextWithFontFamily(curEl, currentLineText() || "", preset ? preset.previewFont : null);
+    }
+}
+function measureLineHeightPx(text) {
+    var m = document.getElementById("pasteTextMeasure");
+    if (!m) return 18;
+    m.textContent = (text && text.length) ? text : " ";
+    var h = m.scrollHeight || 18;
+    return Math.max(18, h);
+}
+// Tự cuộn khung dán (.tt-text-block) sao cho dòng đang chọn (m-current) nằm GIỮA khung nhìn thấy,
+// dựa theo chiều cao thật từng dòng đã tính trong renderLineList (row.style.height).
+function scrollToCurrentLine() {
+    var container = document.getElementById("pasteLineList");
+    var scrollBox = document.getElementById("pasteTextBlock");
+    if (!container || !scrollBox) return;
+    var rows = container.children;
+    var offset = 0, targetRow = null, targetHeight = 0;
+    for (var i = 0; i < rows.length; i++) {
+        if (rows[i].classList.contains("m-current")) {
+            targetRow = rows[i];
+            targetHeight = rows[i].offsetHeight;
+            break;
+        }
+        offset += rows[i].offsetHeight;
+    }
+    if (!targetRow) return;
+    var target = offset + targetHeight / 2 - scrollBox.clientHeight / 2;
+    var maxScroll = Math.max(0, scrollBox.scrollHeight - scrollBox.clientHeight);
+    if (target < 0) target = 0;
+    if (target > maxScroll) target = maxScroll;
+    scrollBox.scrollTop = target;
+}
+function renderLineList() {
+    var container = document.getElementById("pasteLineList");
+    var input = document.getElementById("pasteTextInput");
+    var scrollBox = document.getElementById("pasteTextBlock");
+    var savedScroll = scrollBox ? scrollBox.scrollTop : 0;
+    if (!container) return;
+    container.innerHTML = "";
+    var totalHeight = 0;
+    var dispIdx = 0; // đếm số dòng hiển thị, CHỈ tăng khi dòng có ký tự — dòng trống bị bỏ qua, không đếm
+    _pasteLines.forEach(function(line) {
+        var h = measureLineHeightPx(line.rawText);
+        totalHeight += h;
+
+        var row = document.createElement("div");
+        row.className = "tt-text-line-row" + (line.rawIndex === _pasteLineIdx ? " m-current" : "");
+        row.style.height = h + "px";
+
+        var num = document.createElement("span");
+        num.className = "tt-text-line-num";
+        if (!line.ignore) {
+            dispIdx++;
+            num.textContent = dispIdx;
+            num.title = "Select this line";
+            num.addEventListener("click", function(e) {
+                e.stopPropagation();
+                _pasteLineIdx = line.rawIndex; // chỉ đổi dòng đang chọn, KHÔNG đưa con trỏ vào ô soạn thảo
+                renderLinePreview();
+            });
+            row.addEventListener("mouseenter", function() { row.classList.add("m-hover"); });
+            row.addEventListener("mouseleave", function() { row.classList.remove("m-hover"); });
+        }
+        row.appendChild(num);
+
+        var fill = document.createElement("span");
+        fill.className = "tt-text-line-fill";
+        row.appendChild(fill);
+
+        if (!line.ignore) {
+            var pasteBtn = document.createElement("button");
+            pasteBtn.className = "tt-text-line-insert";
+            pasteBtn.textContent = "⏎";
+            pasteBtn.title = "Paste this line into selected layer";
+            pasteBtn.addEventListener("click", function(e) { e.stopPropagation(); pasteSpecificLineToLayer(line.rawIndex); });
+            row.appendChild(pasteBtn);
+        }
+        container.appendChild(row);
+    });
+    // Textarea không còn co theo "rows" (vì 1 dòng logic có thể chiếm nhiều dòng hiển thị
+    // khi bị wrap theo khung) — set chiều cao thật bằng px cho khớp lớp nền bên dưới.
+    if (input) input.style.height = Math.max(scrollBox ? scrollBox.clientHeight : 36, totalHeight) + "px";
+    if (scrollBox) scrollBox.scrollTop = savedScroll;
+}
+function renderLinePreview() {
+    updateCurrentMeta();
+    renderLineList();
+    scrollToCurrentLine(); // tự cuộn khung dán để dòng đang chọn nằm giữa, tiện theo dõi
+    savePasteTextState(); // lưu cache mỗi khi text hoặc dòng đang chọn thay đổi
+    // Nếu đang Link Quick Layout to Texter và popup Quick Layout đang mở -> cập nhật preview ngay
+    if (isLinkQLTexter() && typeof window.updatePreviewIfNeeded === "function") {
+        var overlay = document.getElementById("previewOverlay");
+        if (overlay && overlay.style.display === "block") window.updatePreviewIfNeeded();
+    }
+}
+// ---------- Lưu/khôi phục nội dung ô dán + dòng đang làm dở (localStorage) ----------
+function savePasteTextState() {
+    var input = document.getElementById("pasteTextInput");
+    try {
+        localStorage.setItem("typoCorePasteText", input ? input.value : "");
+        localStorage.setItem("typoCorePasteLineIdx", String(_pasteLineIdx));
+    } catch (e) {}
+}
+function restorePasteTextState() {
+    var input = document.getElementById("pasteTextInput");
+    if (!input) { renderLinePreview(); return; }
+    var savedText = "";
+    try { savedText = localStorage.getItem("typoCorePasteText") || ""; } catch (e) {}
+    if (!savedText) { renderLinePreview(); return; }
+    input.value = savedText;
+    _pasteLines = splitPasteLines(savedText);
+    var visible = visiblePasteLines();
+    var savedIdx = NaN;
+    try { savedIdx = parseInt(localStorage.getItem("typoCorePasteLineIdx"), 10); } catch (e) {}
+    var stillValid = visible.some(function(l) { return l.rawIndex === savedIdx; });
+    _pasteLineIdx = stillValid ? savedIdx : (visible.length ? visible[0].rawIndex : -1);
+    renderLinePreview();
+}
+// Đọc vị trí con trỏ trong ô -> xác định đang ở dòng nào (khi người dùng tự bấm/gõ trong ô)
+function syncLineFromCaret() {
+    var input = document.getElementById("pasteTextInput");
+    if (!input) return;
+    var pos = input.selectionStart;
+    var before = input.value.slice(0, pos);
+    var lineIdx = before.split("\n").length - 1;
+    var line = _pasteLines[lineIdx];
+    // Bỏ qua nếu con trỏ đang đứng ở dòng trống — dòng trống không có trong danh sách
+    // "line 1..N" nên không thể chọn làm dòng hiện tại (tránh bug hiện "line: 0/N").
+    if (line && !line.ignore && lineIdx !== _pasteLineIdx) {
+        _pasteLineIdx = line.rawIndex;
+        renderLinePreview(); // dùng chung 1 chỗ cập nhật -> tự kèm luôn refresh Quick Layout nếu đang Link
+    }
+}
+function moveLine(dir) {
+    var visible = visiblePasteLines();
+    if (!visible.length) return;
+    var curPos = -1;
+    for (var i = 0; i < visible.length; i++) if (visible[i].rawIndex === _pasteLineIdx) { curPos = i; break; }
+    var newPos = curPos + dir;
+    if (newPos < 0 || newPos >= visible.length) return;
+    _pasteLineIdx = visible[newPos].rawIndex;
+    renderLinePreview(); // chỉ đổi dòng đang chọn, KHÔNG đưa con trỏ vào ô soạn thảo (tránh gõ nhầm)
+}
+function refreshPasteLines() {
+    var input = document.getElementById("pasteTextInput");
+    var raw = input ? input.value : "";
+    var oldIdx = _pasteLineIdx;
+    _pasteLines = raw ? splitPasteLines(raw) : [];
+    var visible = visiblePasteLines();
+    if (!visible.some(function(l) { return l.rawIndex === oldIdx; })) {
+        _pasteLineIdx = visible.length ? visible[0].rawIndex : -1;
+    }
+    renderLinePreview();
+}
+function doPasteToSelection() {
+    var btn = document.getElementById("btnPasteToSelection");
+    var text = currentLineText();
+    if (!text) { alert("No line to paste — type or paste your translation first."); return; }
+    var preset = getCurrentPreset();
+    if (!preset) { alert("No style yet. Select a text layer, then click \"+ Add style\"."); return; }
+    var payload = { text: text, style: scaledStyle(preset) };
+    _exec('TT_pasteToSelection(' + JSON.stringify(payload) + ')', btn, function(res) {
+        flash(btn, res);
+        if (res === "OK") moveLine(1); // jump to next line to keep pasting
+    });
+}
+
+// ========== LINK QUICK LAYOUT TO TEXTER ==========
+// Khi bật: Quick Layout đọc text từ dòng hiện tại của Texter Studio (thay vì layer đang chọn trong PTS),
+// và bấm chọn 1 kiểu cách dòng trong Quick Layout sẽ DÁN chữ đã cách dòng đó ra Selection (dùng style
+// hiện hành của Texter) thay vì áp trực tiếp lên layer đang chọn như bình thường.
+var LINK_QL_TEXTER_KEY = "typoCoreLinkQuickLayoutTexter";
+function isLinkQLTexter() { return localStorage.getItem(LINK_QL_TEXTER_KEY) === "1"; }
+function setLinkQLTexter(v) { try { localStorage.setItem(LINK_QL_TEXTER_KEY, v ? "1" : "0"); } catch (e) {} }
+// Multiple Bubble đôi khi lệch vị trí khi các bóng thoại cách xa nhau trên ảnh dài (chưa rõ nguyên
+// nhân gốc, có thể do máy/thao tác riêng) — để optional, bật lên khi thấy lệch thì thử lại.
+var FIX_MB_POSITION_KEY = "typoCoreFixMBPosition";
+function isFixMBPosition() { return localStorage.getItem(FIX_MB_POSITION_KEY) === "1"; }
+function setFixMBPosition(v) { try { localStorage.setItem(FIX_MB_POSITION_KEY, v ? "1" : "0"); } catch (e) {} }
+// Khi bật: sau khi Multiple Bubble dán THÀNH CÔNG nhiều chỗ, tự tắt MB luôn (phải bật lại tay mới
+// tiếp tục) — tránh lỡ tay chọn thêm vùng ngoài ý muốn sau khi đã dán xong 1 mẻ.
+var SNAP_MB_KEY = "typoCoreSnapMultiBubble";
+function isSnapMultiBubble() { return localStorage.getItem(SNAP_MB_KEY) === "1"; }
+function setSnapMultiBubble(v) { try { localStorage.setItem(SNAP_MB_KEY, v ? "1" : "0"); } catch (e) {} }
+function pasteFormattedTextToSelectionViaTexter(text) {
+    if (!text) return;
+    var preset = getCurrentPreset();
+    if (!preset) { alert("No style yet in Texter Studio. Select a text layer, then click \"+ Add style\"."); return; }
+    var payload = { text: text, style: scaledStyle(preset) };
+    _exec('TT_pasteToSelection(' + JSON.stringify(payload) + ')', null, function(res) {
+        if (res === "OK") moveLine(1); // giữ cùng hành vi tự nhảy dòng như nút Paste chính
+    });
+}
+// Dùng cho phím tắt Win+Ctrl khi đang Link: lấy kiểu cách dòng ĐẦU TIÊN đang hiện trong Quick Layout
+// (áp dụng lên đúng dòng hiện tại của Texter) rồi dán ra Selection.
+function pasteFirstQuickLayoutCase() {
+    var text = currentLineText();
+    if (!text) { alert("No line to paste — type or paste your translation first."); return; }
+    var items = buildCasePreviewItems(text);
+    var formatted = items.length ? items[0].text : text;
+    pasteFormattedTextToSelectionViaTexter(formatted);
+}
+
+function pasteSpecificLineToLayer(rawIndex) {
+    _pasteLineIdx = rawIndex;
+    renderLinePreview();
+    var text = currentLineText();
+    if (!text) return;
+    var preset = getCurrentPreset();
+    if (!preset) { alert("No style yet. Select a text layer, then click \"+ Add style\"."); return; }
+    var row = document.querySelectorAll(".tt-text-line-row")[rawIndex] || null;
+    var btn = row ? row.querySelector(".tt-text-line-insert") : null;
+    var payload = { text: text, style: scaledStyle(preset) };
+    _exec('TT_pasteToLayer(' + JSON.stringify(payload) + ')', btn, function(res) {
+        flash(btn, res);
+    });
+}
+// Áp style (font/size/tracking/color/align) lên layer đang chọn, GIỮ NGUYÊN text hiện có của layer đó
+function applyStyleToActiveLayer(id, btn) {
+    var data = loadTextPresets();
+    var preset = data.presets[id];
+    if (!preset) return;
+    var payload = { text: null, style: scaledStyle(preset) };
+    _exec('TT_pasteToLayer(' + JSON.stringify(payload) + ')', btn, function(res) {
+        flash(btn, res);
+    });
+}
+on("pasteTextInput", "input", refreshPasteLines);
+on("pasteTextInput", "click", syncLineFromCaret);
+on("pasteTextInput", "keyup", syncLineFromCaret);
+// Hover đúng dòng nền phía dưới khi rê chuột qua phần chữ trong ô soạn thảo (chỉ để dễ nhìn,
+// không đổi dòng đang chọn — phải bấm số thứ tự hoặc click vào chữ mới đổi/soạn thảo).
+on("pasteTextInput", "mousemove", function(e) {
+    var container = document.getElementById("pasteLineList");
+    if (!container) return;
+    var y = e.offsetY;
+    var acc = 0;
+    var rows = container.children;
+    for (var i = 0; i < rows.length; i++) {
+        var h = rows[i].offsetHeight;
+        var isHover = (y >= acc && y < acc + h);
+        rows[i].classList.toggle("m-hover", isHover);
+        acc += h;
+    }
+});
+on("pasteTextInput", "mouseleave", function() {
+    var container = document.getElementById("pasteLineList");
+    if (!container) return;
+    Array.prototype.forEach.call(container.children, function(r) { r.classList.remove("m-hover"); });
+});
+// Sau khi dán (Ctrl+V), trình duyệt tự đặt con trỏ ở CUỐI đoạn vừa dán. Nếu để vậy, "keyup" chạy
+// ngay sau đó (lúc thả phím Ctrl/V) sẽ đọc nhầm vị trí cuối này và ghi đè mất dòng đầu tiên vừa chọn
+// đúng ở bước "input". Nên chủ động đưa con trỏ về đầu văn bản ngay sau khi dán xong.
+on("pasteTextInput", "paste", function() {
+    // "paste" bắn ra TRƯỚC khi nội dung dán được chèn vào, nên đọc value ngay lúc này
+    // để biết ô đang trống hay đã có sẵn dữ liệu.
+    var inputNow = document.getElementById("pasteTextInput");
+    var wasEmpty = !inputNow || !inputNow.value.trim();
+    if (!wasEmpty) return; // đã có sẵn nội dung -> dán thêm vào giữa/cuối, không can thiệp vị trí gì cả
+    setTimeout(function() {
+        var input = document.getElementById("pasteTextInput");
+        if (input) input.setSelectionRange(0, 0);
+        refreshPasteLines(); // ô đang trống -> dán vào là coi như bắt đầu mới, đưa về dòng 1
+    }, 0);
+});
+on("btnLinePrev", "click", function() { moveLine(-1); });
+on("btnLineNext", "click", function() { moveLine(1); });
+on("btnSaveTextPreset", "click", doSaveTextPreset);
+on("btnAddFolder", "click", doAddFolder);
+on("importStylesFile", "change", function(e) { handleImportStylesFile(e.target.files[0]); e.target.value = ""; });
+on("btnMultipleBubble", "click", toggleMultipleBubble);
+on("btnMBPause", "click", toggleMBPause);
+on("btnMBClear", "click", clearMBSelections);
+on("btnOpenTexter", "click", function() {
+    var el = document.getElementById("texterOverlay");
+    if (!el) return;
+    var isOpen = el.style.display === "block";
+    el.style.display = isOpen ? "none" : "block";
+    localStorage.setItem("typoCoreTexterState", isOpen ? "closed" : "open");
+});
+(function() {
+    if (localStorage.getItem("typoCoreTexterState") === "open") {
+        var el = document.getElementById("texterOverlay");
+        if (el) el.style.display = "block";
+    }
+})();
+renderStyleList();
+restorePasteTextState();
+// Thu nhỏ/phóng to panel làm thay đổi độ rộng khung -> chữ wrap lại khác -> tính lại layout
+(function() {
+    var block = document.querySelector(".tt-text-block");
+    if (!block || typeof ResizeObserver === "undefined") return;
+    var ro = new ResizeObserver(function() { renderLineList(); });
+    ro.observe(block);
+})();
 var STORAGE_KEY = "typoCoreToolVisibility";
 var TOOL_DEFS = {
     quickLayout: { sectionId: "section-preview", isSection: true },
     fxManager:   { sectionId: "section-fx",      isSection: true },
+    texterStudio: { sectionId: "section-texter", isSection: true },
     layoutCases: { sectionId: "section-layout", isSection: true },
     splitEven:   { sectionId: "section-split",   isSection: true },
     actionsSection: { sectionId: "section-actions", isSection: true },
@@ -456,6 +1483,8 @@ function setupSettingPopup() {
     var toolManagerArrow = document.getElementById("toolManagerArrow");
     var advancedSettingSub = document.getElementById("advancedSettingSub");
     var advancedSettingArrow = document.getElementById("advancedSettingArrow");
+    var textSettingSub = document.getElementById("textSettingSub");
+    var textSettingArrow = document.getElementById("textSettingArrow");
 function closeSettingPopup() {
     popup.classList.remove("show");
     if (layoutManagerSub) layoutManagerSub.style.display = "none";
@@ -464,6 +1493,8 @@ function closeSettingPopup() {
     if (toolManagerArrow) toolManagerArrow.textContent = "▼";
     if (advancedSettingSub) advancedSettingSub.style.display = "none";
     if (advancedSettingArrow) advancedSettingArrow.textContent = "▼";
+    if (textSettingSub) textSettingSub.style.display = "none";
+    if (textSettingArrow) textSettingArrow.textContent = "▼";
     var actionsSub = document.getElementById("actionsSub");
     var actionsArrow = document.getElementById("actionsSubArrow");
     if (actionsSub) actionsSub.style.display = "none";
@@ -480,6 +1511,8 @@ function closeSettingPopup() {
         if (toolManagerArrow) toolManagerArrow.textContent = "▼";
         if (advancedSettingSub) advancedSettingSub.style.display = "none";
         if (advancedSettingArrow) advancedSettingArrow.textContent = "▼";
+        if (textSettingSub) textSettingSub.style.display = "none";
+        if (textSettingArrow) textSettingArrow.textContent = "▼";
         var fxManagerSub = document.getElementById("fxManagerSub");
         var fxManagerSubArrow = document.getElementById("fxManagerSubArrow");
         if (fxManagerSub) fxManagerSub.style.display = "none";
@@ -503,9 +1536,11 @@ function closeSettingPopup() {
                     if (btnLogo) { btnLogo.title = result; btnLogo.classList.add("flash-ok"); setTimeout(function() { btnLogo.classList.remove("flash-ok"); }, 800); }
                 });
             } else if (action === "pasteAllOpened") {
-                _exec("pasteLogoToAllDocs()", null, function(res) { if (res !== "OK") alert("Lỗi: " + res); });
+                _exec("pasteLogoToAllDocs()", null, function(res) { if (res !== "OK") alert("Error: " + res); });
             } else if (action === "toggleEditMode") { toggleEditMode(); closeSettingPopup(); return; }
             else if (action === "resetLayout") { resetLayout(); }
+            else if (action === "importStylesMain") { document.getElementById("importStylesFile").click(); }
+            else if (action === "exportStylesMain") { doExportStyles(); }
             closeSettingPopup();
         });
     });
@@ -533,6 +1568,8 @@ function closeSettingPopup() {
                     }
                 } else if (key === "autoFX") {
                     if (vis.autoFX) startAutoFx(); else stopAutoFx();
+                } else if (key === "texterStudio") {
+                    applyTexterStudioLockState(vis.texterStudio !== false);
                 }
             }
         });
@@ -548,6 +1585,10 @@ function closeSettingPopup() {
     var advancedSettingToggle = document.getElementById("advancedSettingToggle");
     if (advancedSettingToggle) {
         advancedSettingToggle.addEventListener("click", function(e) { e.stopPropagation(); if (advancedSettingSub.style.display === "none") { advancedSettingSub.style.display = "block"; advancedSettingArrow.textContent = "▲"; } else { advancedSettingSub.style.display = "none"; advancedSettingArrow.textContent = "▼"; } });
+    }
+    var textSettingToggle = document.getElementById("textSettingToggle");
+    if (textSettingToggle) {
+        textSettingToggle.addEventListener("click", function(e) { e.stopPropagation(); if (textSettingSub.style.display === "none") { textSettingSub.style.display = "block"; textSettingArrow.textContent = "▲"; } else { textSettingSub.style.display = "none"; textSettingArrow.textContent = "▼"; } });
     }
 
     var actionsArrow = document.getElementById("actionsSubArrow");
@@ -579,6 +1620,30 @@ function closeSettingPopup() {
         });
     }
     updateCheckboxes(loadVis());
+    var cbLinkQL = document.getElementById("toggle_linkQuickLayoutTexter");
+    if (cbLinkQL) {
+        cbLinkQL.checked = isLinkQLTexter();
+        cbLinkQL.addEventListener("click", function(e) {
+            e.stopPropagation();
+            setLinkQLTexter(this.checked);
+        });
+    }
+    var cbFixMB = document.getElementById("toggle_fixMBPosition");
+    if (cbFixMB) {
+        cbFixMB.checked = isFixMBPosition();
+        cbFixMB.addEventListener("click", function(e) {
+            e.stopPropagation();
+            setFixMBPosition(this.checked);
+        });
+    }
+    var cbSnapMB = document.getElementById("toggle_snapMultiBubble");
+    if (cbSnapMB) {
+        cbSnapMB.checked = isSnapMultiBubble();
+        cbSnapMB.addEventListener("click", function(e) {
+            e.stopPropagation();
+            setSnapMultiBubble(this.checked);
+        });
+    }
 }
 
 function setupPreviewPopup() {
@@ -689,26 +1754,28 @@ function setupPreviewPopup() {
             if (grid.children.length) grid.innerHTML = "";
             return;
         }
-        var caseNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-        var seen = {};
-        var items = [];
-        for (var n = 0; n < caseNumbers.length; n++) {
-            var caseNum = caseNumbers[n];
-            var formatted = getCasePreview(text, caseNum);
-            if (seen[formatted]) continue;
-            seen[formatted] = true;
-            items.push({ case: caseNum, html: formatted });
-        }
+        var items = buildCasePreviewItems(text);
         grid.innerHTML = "";
+        // Khi đang Link Quick Layout to Texter -> lấy FONT (không lấy size) từ style hiện hành
+        // của Texter Studio để preview, thay cho font tự chọn riêng của Quick Layout.
+        var linkedFont = null;
+        if (isLinkQLTexter()) {
+            var curPreset = getCurrentPreset();
+            if (curPreset && curPreset.previewFont) linkedFont = curPreset.previewFont;
+        }
         for (var i = 0; i < items.length; i++) {
             var item = document.createElement("div");
             item.className = "preview-item";
-            if (selectedFontIndex >= 0 && customFonts[selectedFontIndex])
-                item.style.fontFamily = '"' + customFonts[selectedFontIndex] + '"';
             item.style.fontSize = previewSize + "px";
-            item.innerHTML = items[i].html.replace(/\n/g, "<br>");
-            item.addEventListener("click", (function(caseNum) {
+            var fam = linkedFont || ((selectedFontIndex >= 0 && customFonts[selectedFontIndex]) ? customFonts[selectedFontIndex] : null);
+            var innerHtml = items[i].text.replace(/\n/g, "<br>");
+            item.innerHTML = fam ? ("<span style='font-family: \"" + fontFamilyAttrSafe(fam) + "\"'>" + innerHtml + "</span>") : innerHtml;
+            item.addEventListener("click", (function(caseNum, formattedText) {
                 return function() {
+                    if (isLinkQLTexter()) {
+                        pasteFormattedTextToSelectionViaTexter(formattedText);
+                        return;
+                    }
                     _exec('applyCase(' + caseNum + ')', null, function(res) {
                         if (res === "OK") {
                             var vis = loadVis();
@@ -716,14 +1783,20 @@ function setupPreviewPopup() {
                         }
                     });
                 };
-            })(items[i].case));
+            })(items[i].case, items[i].text));
             grid.appendChild(item);
         }
     }
 
+    // Nguồn text cho Quick Layout: bình thường đọc từ layer text đang chọn trong Photoshop (getText()).
+    // Khi bật "Link Quick Layout to Texter" -> đọc từ dòng hiện tại trong Texter Studio thay vào đó.
+    function getQuickLayoutSourceText(callback) {
+        if (isLinkQLTexter()) { callback(currentLineText() || ""); return; }
+        cs.evalScript('getText()', callback);
+    }
     function updatePreviewIfNeeded() {
-        cs.evalScript('getText()', function(text) {
-            if (!text || text === "null" || text === "undefined" || text.indexOf("ERROR") === 0) {
+        getQuickLayoutSourceText(function(text) {
+            if (!text || text === "null" || text === "undefined" || (text + "").indexOf("ERROR") === 0) {
                 if (grid) grid.innerHTML = "";
                 lastPreviewText = "";
                 return;
@@ -736,8 +1809,8 @@ function setupPreviewPopup() {
     window.updatePreviewIfNeeded = updatePreviewIfNeeded;
 
     function loadPreviews() {
-        cs.evalScript('getText()', function(text) {
-            if (!text || text === "null" || text === "undefined" || text.indexOf("ERROR") === 0) {
+        getQuickLayoutSourceText(function(text) {
+            if (!text || text === "null" || text === "undefined" || (text + "").indexOf("ERROR") === 0) {
                 if (grid) grid.innerHTML = "";
                 return;
             }
@@ -1250,7 +2323,7 @@ function performFxSync(opts) {
     var silent = !!opts.silent;
     cs.evalScript("getFXData()", function(json) {
         if (!json || json === "NO_DOC" || json.indexOf("ERROR:") === 0) {
-            if (!silent) alert("Không tìm thấy FX: " + (json || "undefined"));
+            if (!silent) alert("FX not found: " + (json || "undefined"));
             if (btn && !silent) flash(btn, "NO_FX");
             if (opts.onDone) opts.onDone(false);
             return;
@@ -1414,7 +2487,7 @@ if (fxVis.textColor && data.textColor) {
                 if (btn && !silent) flash(btn, "OK");
                 if (opts.onDone) opts.onDone(true);
             } catch(e) {
-                if (!silent) alert("Lỗi parse JSON: " + e.message);
+                if (!silent) alert("JSON parse error: " + e.message);
                 if (btn && !silent) flash(btn, "ERROR");
                 if (opts.onDone) opts.onDone(false);
             }
@@ -1571,7 +2644,7 @@ if (fxVis.dropShadow && shadowCheck && shadowCheck.checked) {
     var expr = 'applyFXToSelectedLayers(' + JSON.stringify(jsonStr) + ')';
     _exec(expr, silent ? null : btn, function(res) {
         if (spinner) spinner.style.display = "none";
-        if (res !== "OK" && !silent) alert("Apply thất bại: " + res);
+        if (res !== "OK" && !silent) alert("Apply failed: " + res);
         if (opts.onDone) opts.onDone(res === "OK");
     });
 }
@@ -1663,7 +2736,7 @@ if (fxPopupEl) {
 // Nút FG và BG trong color picker popup (dùng cho tất cả swatch)
 function applyPSColorToSwatch(type) {
     if (!fxSwatchTarget) { 
-        alert("Chọn ô màu trước"); 
+        alert("Select a color swatch first"); 
         return; 
     }
     var jsx = type === "FG"
@@ -1819,9 +2892,227 @@ function makeFxResizable() {
     }
 }
 
+// Thanh kéo chỉnh chiều cao (giống cơ chế .fx-resize-handle) — dùng lại cho cả 2 thanh của Texter Studio
+function makeVerticalResizable(el, handle, storageKey, minH, maxH, overlayEl) {
+    if (!el || !handle) return;
+    var saved = localStorage.getItem(storageKey);
+    if (saved) el.style.height = saved + "px";
+    var startY, startHeight;
+    handle.addEventListener("mousedown", function(e) {
+        e.preventDefault();
+        startY = e.clientY;
+        startHeight = el.offsetHeight;
+        document.addEventListener("mousemove", doDrag);
+        document.addEventListener("mouseup", stopDrag);
+    });
+    function doDrag(e) {
+        var newHeight = startHeight + (e.clientY - startY);
+        newHeight = Math.max(minH, Math.min(maxH, newHeight));
+        el.style.height = newHeight + "px";
+        localStorage.setItem(storageKey, newHeight);
+    }
+    function stopDrag() { document.removeEventListener("mousemove", doDrag); document.removeEventListener("mouseup", stopDrag); }
+    if (overlayEl) {
+        var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.attributeName === "style" && overlayEl.style.display !== "none") {
+                    var s = localStorage.getItem(storageKey);
+                    if (s) el.style.height = s + "px";
+                }
+            });
+        });
+        observer.observe(overlayEl, { attributes: true });
+    }
+}
+function makeTexterResizable() {
+    var overlayEl = document.getElementById("texterOverlay");
+    makeVerticalResizable(
+        document.getElementById("pasteTextBlock"),
+        document.getElementById("pasteTextResizeHandle"),
+        "typoCorePasteBoxHeight", 34, 300, overlayEl
+    );
+    makeVerticalResizable(
+        document.getElementById("texterScroll"),
+        document.getElementById("texterResizeHandle"),
+        "typoCoreTexterScrollHeight", 100, 500, overlayEl
+    );
+}
+
+// ========== PHÍM TẮT (Win+Ctrl / Win+Alt) — cùng cơ chế poll của TyperTool ==========
+// ExtendScript không bắt được sự kiện keydown toàn cục, chỉ đọc được TRẠNG THÁI phím bổ trợ
+// đang giữ tại 1 thời điểm (ScriptUI.environment.keyboardState). Nên phải poll liên tục (50ms,
+// giống chu kỳ TyperTool dùng) rồi tự làm edge-detection (chỉ bắn khi vừa nhấn, không lặp khi giữ),
+// cộng thêm cooldown 2 giây để an toàn — y hệt cơ chế oe() trong TyperTool.
+var _hotkeyReady = true;      // hết cooldown 2s chưa
+var _hotkeyReleased = true;   // phím đã được nhả ra kể từ lần bắn trước chưa
+function hotkeyCanFire() {
+    if (!_hotkeyReady || !_hotkeyReleased) return false;
+    _hotkeyReady = false;
+    _hotkeyReleased = false;
+    setTimeout(function() { _hotkeyReady = true; }, 1000);
+    return true;
+}
+var _texterHotkeysEnabled = true;
+// ========== MULTIPLE BUBBLE (TypeR) ==========
+// Bật: theo dõi Selection trong Photoshop, mỗi lần anh tự chọn 1 vùng mới (Magic Wand/Marquee...)
+// thì lưu lại vào hàng đợi. Khi bấm phím tắt Paste (Win+Ctrl) lúc đang bật MB, thay vì dán 1 dòng
+// như bình thường, nó dán HÀNG LOẠT: dòng 1 -> vùng 1, dòng 2 -> vùng 2,... theo đúng thứ tự đã chọn.
+var _mbActive = false;
+var _mbPaused = false;
+var _mbSelections = [];
+var _mbPollTimer = null;
+var _mbStartLineIdx = -1; // dòng đang chọn NGAY TRƯỚC lúc bật MB — để "Clear" trả lại đúng vị trí này
+function updateMBUi() {
+    var dot = document.getElementById("mbDot");
+    var infoBar = document.getElementById("mbInfoBar");
+    var infoCount = document.getElementById("mbInfoCount");
+    var pauseBtn = document.getElementById("btnMBPause");
+    if (dot) dot.classList.toggle("mb-active", _mbActive);
+    if (infoBar) infoBar.style.display = _mbActive ? "flex" : "none";
+    if (infoCount) infoCount.textContent = _mbSelections.length + " selected";
+    if (pauseBtn) pauseBtn.textContent = _mbPaused ? "Resume" : "Pause";
+}
+function pollMBSelection() {
+    cs.evalScript("TR_getSelectionChanged()", function(res) {
+        var data;
+        try { data = JSON.parse(res); } catch (e) { return; }
+        if (!data || data.noChange || data.error) return;
+        if (_mbPaused) return; // đang tạm dừng -> không lưu, nhưng vẫn gọi ở trên để Photoshop cập nhật trạng thái mới nhất
+        _mbSelections.push({
+            top: data.top, left: data.left, right: data.right, bottom: data.bottom,
+            width: data.width, height: data.height, xMid: data.xMid, yMid: data.yMid,
+            lineIndex: _pasteLineIdx // gắn kèm đúng dòng đang chọn LÚC bắt được vùng này
+        });
+        moveLine(1); // tự nhảy sang dòng kế tiếp -> preview hiện ngay dòng sẽ dùng cho bóng thoại kế
+        updateMBUi();
+        // Nháy xanh nhẹ trên nút MB mỗi lần bắt được 1 vùng chọn mới -> phản hồi ngay, không cần hover
+        var btn = document.getElementById("btnMultipleBubble");
+        if (btn) { btn.classList.add("flash-ok"); setTimeout(function() { btn.classList.remove("flash-ok"); }, 400); }
+    });
+}
+function toggleMultipleBubble() {
+    if (_mbActive) { turnOffMultipleBubble(); return; }
+    _mbActive = true;
+    _mbPaused = false;
+    _mbStartLineIdx = _pasteLineIdx; // nhớ lại dòng hiện tại trước khi bắt đầu đếm
+    cs.evalScript("TR_startSelectionMonitoring()");
+    if (_mbPollTimer) clearInterval(_mbPollTimer);
+    _mbPollTimer = setInterval(pollMBSelection, 300);
+    updateMBUi();
+}
+function turnOffMultipleBubble() {
+    _mbActive = false;
+    cs.evalScript("TR_stopSelectionMonitoring()");
+    if (_mbPollTimer) { clearInterval(_mbPollTimer); _mbPollTimer = null; }
+    updateMBUi();
+}
+function toggleMBPause() {
+    _mbPaused = !_mbPaused;
+    updateMBUi();
+}
+function clearMBSelections() {
+    _mbSelections = [];
+    if (_mbStartLineIdx >= 0) {
+        _pasteLineIdx = _mbStartLineIdx; // trả dòng đang chọn về đúng lúc trước khi MB bắt đầu đếm
+        renderLinePreview();
+    }
+    updateMBUi();
+}
+function doMultipleBubblePaste() {
+    if (!_mbSelections.length) {
+        alert("No bubble selections captured yet.\nTurn on MB (green dot) and select each speech bubble in Photoshop, then press Win+Ctrl to paste them all.");
+        return;
+    }
+    var preset = getCurrentPreset();
+    if (!preset) { alert("No style in Texter Studio yet. Select a sample text layer, then click \"+ Add style\" first."); return; }
+    if (!_pasteLines.length) { alert("No line to paste in Texter Studio."); return; }
+
+    // Lấy đúng chữ theo lineIndex đã gắn kèm lúc chọn từng vùng (không phải theo thứ tự thô) —
+    // nếu dòng đó không còn hợp lệ (đã xóa/đã thành dòng trống) thì quét tới dòng kế tiếp còn dùng được.
+    var texts = [];
+    var fallbackIdx = 0;
+    for (var s = 0; s < _mbSelections.length; s++) {
+        var sel = _mbSelections[s];
+        var line = null;
+        if (typeof sel.lineIndex === "number" && sel.lineIndex >= 0 && _pasteLines[sel.lineIndex] && !_pasteLines[sel.lineIndex].ignore) {
+            line = _pasteLines[sel.lineIndex];
+            fallbackIdx = Math.max(fallbackIdx, sel.lineIndex + 1);
+        } else {
+            while (fallbackIdx < _pasteLines.length) {
+                var candidate = _pasteLines[fallbackIdx];
+                fallbackIdx++;
+                if (candidate && !candidate.ignore) { line = candidate; break; }
+            }
+        }
+        if (!line) break; // hết dòng để dán -> dừng, không tạo thêm layer thừa
+        texts.push(line.text);
+    }
+    if (!texts.length) { alert("No more lines left to paste."); return; }
+
+    var payload = {
+        texts: texts,
+        styles: [scaledStyle(preset)],
+        selections: _mbSelections.slice(0, texts.length),
+        padding: 0,
+        fixPosition: isFixMBPosition()
+    };
+    _exec('TR_createTextLayersInStoredSelections(' + JSON.stringify(payload) + ')', document.getElementById("btnMultipleBubble"), function(res) {
+        if (res === "") {
+            _mbSelections = [];
+            _mbStartLineIdx = _pasteLineIdx; // đã dán xong -> mốc "Clear" giờ tính từ đây
+            updateMBUi();
+            if (isSnapMultiBubble()) turnOffMultipleBubble(); // dán nhiều chỗ THÀNH CÔNG mới tự tắt
+        } else {
+            alert("Multiple Bubble error: " + res);
+        }
+    });
+}
+function firePasteHotkey() {
+    if (_mbActive) { doMultipleBubblePaste(); return; }
+    if (isLinkQLTexter()) pasteFirstQuickLayoutCase();
+    else doPasteToSelection(); // Win+Ctrl = Paste (Texter Studio)
+}
+function fireCenterHotkey() {
+    var btn = document.querySelector('[data-tool="center"]'); // Center có sẵn ở Quick Layout / Actions
+    _exec('alignCenter()', btn);
+}
+function pollHotkeys() {
+    if (!_texterHotkeysEnabled) return; // Texter Studio đang bị ẩn -> tắt hẳn các phím tắt bên dưới
+    cs.evalScript('getHotkeyCombo()', function(combo) {
+        if (combo === "metaCtrl") {
+            if (!hotkeyCanFire()) return;
+            firePasteHotkey(); // Win+Ctrl = Paste (Texter Studio / Multiple Bubble)
+        } else if (combo === "metaAlt") {
+            if (!hotkeyCanFire()) return;
+            fireCenterHotkey(); // Win+Alt = Center
+        } else {
+            _hotkeyReleased = true; // không giữ tổ hợp nào -> sẵn sàng cho lần bắn kế tiếp
+        }
+    });
+}
+// Khi Texter Studio bị ẩn: tắt hẳn phím tắt, đồng thời khóa cứng "Link Quick Layout to Texter"
+// (mờ đi, không cho tick) — vì Link phụ thuộc hoàn toàn vào Texter đang hoạt động.
+function applyTexterStudioLockState(enabled) {
+    _texterHotkeysEnabled = enabled;
+    var linkCb = document.getElementById("toggle_linkQuickLayoutTexter");
+    if (linkCb) {
+        linkCb.disabled = !enabled;
+        var row = linkCb.closest(".setting-item");
+        if (row) row.classList.toggle("tt-setting-disabled", !enabled);
+        if (!enabled && isLinkQLTexter()) {
+            setLinkQLTexter(false);
+            linkCb.checked = false;
+        }
+    }
+}
+function startHotkeyPolling() {
+    setInterval(pollHotkeys, 50);
+}
+
 (function init() {
     restoreLayout();
     var vis = loadVis(); applyVis(vis);
+    applyTexterStudioLockState(vis.texterStudio !== false);
     applyFxFeatureVis(loadFxFeatureVis());
     var savedLogo = localStorage.getItem("typoCoreLogoPath");
     if (savedLogo) {
@@ -1865,6 +3156,20 @@ function makeFxResizable() {
         if (fxOverlay) fxOverlay.style.display = "flex";
     }
     makeFxResizable();
+    makeTexterResizable();
+    startHotkeyPolling();
+    // Nạp trước danh sách app.fonts (delay nhẹ để chắc chắn CSInterface đã sẵn sàng hoàn toàn,
+    // tránh trường hợp gọi evalScript quá sớm lúc panel vừa mở làm callback không chạy).
+    setTimeout(function() {
+        cs.evalScript('TT_getUserFonts()', function(res) {
+            try {
+                var d = JSON.parse(res);
+                _userFontsCache = (d && d.fonts) ? d.fonts : [];
+            } catch (e) { _userFontsCache = []; }
+            renderStyleList();
+            renderLinePreview();
+        });
+    }, 800);
 
     // Áp dụng trạng thái Less ban đầu
     if (fxCollapsedMode) {
