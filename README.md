@@ -109,8 +109,6 @@ TypoCore By Maditor
 
 This project was built with the assistance of AI tools.
 
-TypoCore is designed to work alongside Typer Tool, focusing on layout, spacing, and visual refinement to complete the typesetting workflow.
-
 
 
 
