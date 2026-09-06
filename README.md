@@ -1,9 +1,13 @@
-### ✨UPDATE TYPOCORE V1.3.2
-* Thêm drop shadow, stroke gradient
-* Nút Copy Paste FX sẽ copy cả fill và opacity của layer text
-* Tự động `apply` khi bật Auto FX trong Advanced setting
-* Ẩn hiện các chức năng không dùng của fx studio trong hide/unhide tool
-* Thêm `manual resize box` để quick layout không tính toán mở rộng khung thoại (dùng đối với ảnh resolution khác 72ppi
+### ✨UPDATE TYPOCORE V2.0.0
+- Tích hợp chức năng của Typetools và TypeR -> TypeBox
+- Liên Kết Quick Layout với TypeBox: Preview kiểu cách dòng trước khi dán thoại.
+- Snap Multiple Bubble: Tự động dừng Multiple Bubble sau khi dán hàng loạt.
+- Fix Multiple Bubble position: điều chỉnh lại vị trí thoại sau khi dán(nếu thoại tự động co làm sai vị trí đối với webtoon).
+- Import-Export Style của TypeBox Có thể dùng chung file với Typertool hoặc TypeR.
+- Nút Center được nâng cấp giống với TypeR.
+- Vẫn giữ phím tắt Win+Ctrl để dán và Win+Alt để canh giữa.
+- Cần tắt hẳn Typertool hoặc TypeR nếu muốn dùng TypeBox chính xác.
+- Nếu ẩn chức năng TypeBox trong cài đặt sẽ tắt luôn phím tắt của TypoCore để không ảnh hướng đến 2 tool trên.
 ---
   
 ### 🔹 Hướng Dẫn Cài Đặt
@@ -36,6 +40,14 @@ Hướng Dẫn Sử Dụng: https://youtu.be/Rlx4oNQURAU
 
 ---
 
+### ✨UPDATE TYPOCORE V1.3.2
+* Thêm drop shadow, stroke gradient
+* Nút Copy Paste FX sẽ copy cả fill và opacity của layer text
+* Tự động `apply` khi bật Auto FX trong Advanced setting
+* Ẩn hiện các chức năng không dùng của fx studio trong hide/unhide tool
+* Thêm `manual resize box` để quick layout không tính toán mở rộng khung thoại (dùng đối với ảnh resolution khác 72ppi
+
+---
 ### ✨UPDATE TYPOCORE V1.3.1 Fix Bug
 - Sửa Lỗi Quick Layout Preview sai sau khi lượt bớt Layout trùng nhau
 - Xin lỗi các bạn vì chưa kiểm tra kĩ trước khi cập nhật 
