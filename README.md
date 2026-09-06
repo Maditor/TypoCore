@@ -2,7 +2,7 @@
 - Tích hợp chức năng của Typetools và TypeR -> TypeBox
 - Liên Kết Quick Layout với TypeBox: Preview kiểu cách dòng trước khi dán thoại.
 - Snap Multiple Bubble: Tự động dừng Multiple Bubble sau khi dán hàng loạt.
-- Fix Multiple Bubble position: điều chỉnh lại vị trí thoại sau khi dán(nếu thoại tự động co làm sai vị trí đối với webtoon).
+- Fix Multiple Bubble position: điều chỉnh lại vị trí thoại sau khi dán(nếu thoại tự động co làm sai vị trí).
 - Import-Export Style của TypeBox Có thể dùng chung file với Typertool hoặc TypeR.
 - Nút Center được nâng cấp giống với TypeR.
 - Vẫn giữ phím tắt Win+Ctrl để dán và Win+Alt để canh giữa.
