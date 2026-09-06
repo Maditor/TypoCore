@@ -6,7 +6,7 @@ License below.
 
 ## TyperTool
 
-TypoCore's Texter Studio engine (text-layer creation, style application,
+TypoCore's TypeBox engine (text-layer creation, style application,
 font handling) is adapted from **TyperTool**.
 
 ## TypeR
@@ -45,6 +45,6 @@ SOFTWARE.
 
 ## TypoCore's own code
 
-All other code in TypoCore (Texter Studio UI/UX, Quick Layout linking, style
+All other code in TypoCore (TypeBox UI/UX, Quick Layout linking, style
 management, Multiple Bubble UI, and all files not listed above) is original
 work and is not covered by the license above.
