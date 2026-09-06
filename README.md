@@ -1,4 +1,4 @@
-### ✨UPDATE TYPOCORE V2.0.0
+### ✨UPDATE TYPOCORE V2.0.0 beta
 - Tích hợp chức năng của Typetools và TypeR -> TypeBox
 - Liên Kết Quick Layout với TypeBox: Preview kiểu cách dòng trước khi dán thoại.
 - Snap Multiple Bubble: Tự động dừng Multiple Bubble sau khi dán hàng loạt.
