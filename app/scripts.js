@@ -70,7 +70,7 @@ function getCasePreview(text, n) {
     return lines.join("\n");
 }
 // Danh sách các kiểu cách dòng (đã lọc trùng) cho 1 đoạn text — dùng chung cho lưới Quick Layout
-// VÀ cho phím tắt Win+Ctrl khi bật "Link Quick Layout to Texter" (luôn lấy items[0] = kiểu ĐẦU TIÊN).
+// VÀ cho phím tắt Win+Ctrl khi bật "Link Quick Layout to TypeBox" (luôn lấy items[0] = kiểu ĐẦU TIÊN).
 function buildCasePreviewItems(text) {
     var caseNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
     var seen = {};
@@ -954,7 +954,7 @@ function renderLinePreview() {
     renderLineList();
     scrollToCurrentLine(); // tự cuộn khung dán để dòng đang chọn nằm giữa, tiện theo dõi
     savePasteTextState(); // lưu cache mỗi khi text hoặc dòng đang chọn thay đổi
-    // Nếu đang Link Quick Layout to Texter và popup Quick Layout đang mở -> cập nhật preview ngay
+    // Nếu đang Link Quick Layout to TypeBox và popup Quick Layout đang mở -> cập nhật preview ngay
     if (isLinkQLTexter() && typeof window.updatePreviewIfNeeded === "function") {
         var overlay = document.getElementById("previewOverlay");
         if (overlay && overlay.style.display === "block") window.updatePreviewIfNeeded();
@@ -1033,7 +1033,7 @@ function doPasteToSelection() {
 }
 
 // ========== LINK QUICK LAYOUT TO TEXTER ==========
-// Khi bật: Quick Layout đọc text từ dòng hiện tại của Texter Studio (thay vì layer đang chọn trong PTS),
+// Khi bật: Quick Layout đọc text từ dòng hiện tại của TypeBox (thay vì layer đang chọn trong PTS),
 // và bấm chọn 1 kiểu cách dòng trong Quick Layout sẽ DÁN chữ đã cách dòng đó ra Selection (dùng style
 // hiện hành của Texter) thay vì áp trực tiếp lên layer đang chọn như bình thường.
 var LINK_QL_TEXTER_KEY = "typoCoreLinkQuickLayoutTexter";
@@ -1052,7 +1052,7 @@ function setSnapMultiBubble(v) { try { localStorage.setItem(SNAP_MB_KEY, v ? "1"
 function pasteFormattedTextToSelectionViaTexter(text) {
     if (!text) return;
     var preset = getCurrentPreset();
-    if (!preset) { alert("No style yet in Texter Studio. Select a text layer, then click \"+ Add style\"."); return; }
+    if (!preset) { alert("No style yet in TypeBox. Select a text layer, then click \"+ Add style\"."); return; }
     var payload = { text: text, style: scaledStyle(preset) };
     _exec('TT_pasteToSelection(' + JSON.stringify(payload) + ')', null, function(res) {
         if (res === "OK") moveLine(1); // giữ cùng hành vi tự nhảy dòng như nút Paste chính
@@ -1756,8 +1756,8 @@ function setupPreviewPopup() {
         }
         var items = buildCasePreviewItems(text);
         grid.innerHTML = "";
-        // Khi đang Link Quick Layout to Texter -> lấy FONT (không lấy size) từ style hiện hành
-        // của Texter Studio để preview, thay cho font tự chọn riêng của Quick Layout.
+        // Khi đang Link Quick Layout to TypeBox -> lấy FONT (không lấy size) từ style hiện hành
+        // của TypeBox để preview, thay cho font tự chọn riêng của Quick Layout.
         var linkedFont = null;
         if (isLinkQLTexter()) {
             var curPreset = getCurrentPreset();
@@ -1789,7 +1789,7 @@ function setupPreviewPopup() {
     }
 
     // Nguồn text cho Quick Layout: bình thường đọc từ layer text đang chọn trong Photoshop (getText()).
-    // Khi bật "Link Quick Layout to Texter" -> đọc từ dòng hiện tại trong Texter Studio thay vào đó.
+    // Khi bật "Link Quick Layout to TypeBox" -> đọc từ dòng hiện tại trong TypeBox thay vào đó.
     function getQuickLayoutSourceText(callback) {
         if (isLinkQLTexter()) { callback(currentLineText() || ""); return; }
         cs.evalScript('getText()', callback);
@@ -2892,7 +2892,7 @@ function makeFxResizable() {
     }
 }
 
-// Thanh kéo chỉnh chiều cao (giống cơ chế .fx-resize-handle) — dùng lại cho cả 2 thanh của Texter Studio
+// Thanh kéo chỉnh chiều cao (giống cơ chế .fx-resize-handle) — dùng lại cho cả 2 thanh của TypeBox
 function makeVerticalResizable(el, handle, storageKey, minH, maxH, overlayEl) {
     if (!el || !handle) return;
     var saved = localStorage.getItem(storageKey);
@@ -3024,8 +3024,8 @@ function doMultipleBubblePaste() {
         return;
     }
     var preset = getCurrentPreset();
-    if (!preset) { alert("No style in Texter Studio yet. Select a sample text layer, then click \"+ Add style\" first."); return; }
-    if (!_pasteLines.length) { alert("No line to paste in Texter Studio."); return; }
+    if (!preset) { alert("No style in TypeBox yet. Select a sample text layer, then click \"+ Add style\" first."); return; }
+    if (!_pasteLines.length) { alert("No line to paste in TypeBox."); return; }
 
     // Lấy đúng chữ theo lineIndex đã gắn kèm lúc chọn từng vùng (không phải theo thứ tự thô) —
     // nếu dòng đó không còn hợp lệ (đã xóa/đã thành dòng trống) thì quét tới dòng kế tiếp còn dùng được.
@@ -3070,18 +3070,18 @@ function doMultipleBubblePaste() {
 function firePasteHotkey() {
     if (_mbActive) { doMultipleBubblePaste(); return; }
     if (isLinkQLTexter()) pasteFirstQuickLayoutCase();
-    else doPasteToSelection(); // Win+Ctrl = Paste (Texter Studio)
+    else doPasteToSelection(); // Win+Ctrl = Paste (TypeBox)
 }
 function fireCenterHotkey() {
     var btn = document.querySelector('[data-tool="center"]'); // Center có sẵn ở Quick Layout / Actions
     _exec('alignCenter()', btn);
 }
 function pollHotkeys() {
-    if (!_texterHotkeysEnabled) return; // Texter Studio đang bị ẩn -> tắt hẳn các phím tắt bên dưới
+    if (!_texterHotkeysEnabled) return; // TypeBox đang bị ẩn -> tắt hẳn các phím tắt bên dưới
     cs.evalScript('getHotkeyCombo()', function(combo) {
         if (combo === "metaCtrl") {
             if (!hotkeyCanFire()) return;
-            firePasteHotkey(); // Win+Ctrl = Paste (Texter Studio / Multiple Bubble)
+            firePasteHotkey(); // Win+Ctrl = Paste (TypeBox / Multiple Bubble)
         } else if (combo === "metaAlt") {
             if (!hotkeyCanFire()) return;
             fireCenterHotkey(); // Win+Alt = Center
@@ -3090,7 +3090,7 @@ function pollHotkeys() {
         }
     });
 }
-// Khi Texter Studio bị ẩn: tắt hẳn phím tắt, đồng thời khóa cứng "Link Quick Layout to Texter"
+// Khi TypeBox bị ẩn: tắt hẳn phím tắt, đồng thời khóa cứng "Link Quick Layout to TypeBox"
 // (mờ đi, không cho tick) — vì Link phụ thuộc hoàn toàn vào Texter đang hoạt động.
 function applyTexterStudioLockState(enabled) {
     _texterHotkeysEnabled = enabled;

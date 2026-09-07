@@ -321,7 +321,7 @@ button.flash-err {
 .tt-text-block::-webkit-scrollbar-thumb:hover { background: #555; }
 .tt-text-block::-webkit-scrollbar-corner { background: #1a1a1a; }
 
-/* ---- Vùng cuộn của cả section Texter Studio (text-block + styles) — đồng bộ .fx-scroll/.fx-resize-handle ---- */
+/* ---- Vùng cuộn của cả section TypeBox (text-block + styles) — đồng bộ .fx-scroll/.fx-resize-handle ---- */
 .tt-texter-scroll {
     overflow-y: auto;
     height: 220px;
