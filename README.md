@@ -1,13 +1,36 @@
-### ✨UPDATE TYPOCORE V2.0.0 beta
-- Tích hợp chức năng của Typetools và TypeR -> TypeBox
-- Liên Kết Quick Layout với TypeBox: Preview kiểu cách dòng trước khi dán thoại.
-- Snap Multiple Bubble: Tự động dừng Multiple Bubble sau khi dán hàng loạt.
-- Fix Multiple Bubble position: điều chỉnh lại vị trí thoại sau khi dán(nếu thoại tự động co làm sai vị trí).
-- Import-Export Style của TypeBox Có thể dùng chung file với Typertool hoặc TypeR.
-- Nút Center được nâng cấp giống với TypeR.
-- Vẫn giữ phím tắt Win+Ctrl để dán và Win+Alt để canh giữa.
-- Cần tắt hẳn Typertool hoặc TypeR nếu muốn dùng TypeBox chính xác.
-- Nếu ẩn chức năng TypeBox trong cài đặt sẽ tắt luôn phím tắt của TypoCore để không ảnh hướng đến 2 tool trên.
+### ✨UPDATE TYPOCORE V2.0.0
+
+**TypeBox — tích hợp TyperTool + TypeR**
+- Gộp chức năng TyperTool và TypeR thành 1 công cụ mới: **Typer Box**
+- Quản lý style: tạo/sửa/xoá, gộp theo folder, kéo-thả đổi thứ tự
+- Import/Export style dùng chung file với TyperTool hoặc TypeR
+
+**Multiple Bubble**
+- Chọn lần lượt nhiều bóng thoại, dán hàng loạt đúng dòng vào đúng bóng
+- **Snap Multiple Bubble**: tự tắt sau khi dán hàng loạt xong
+- **Fix MB Position**: tự chỉnh lại vị trí thoại nếu bị lệch sau khi dán
+
+**Link Quick Layout ↔ Typer Box**
+- Xem trước kiểu cách dòng ngay trên dòng đang dịch trước khi dán
+- Có Selection → dán vào Selection; không có Selection → tự dán vào layer text đang chọn
+- Font preview tự cập nhật khi đổi style
+
+**Center nâng cấp kiểu TypeR**
+- Tự nhận diện bóng thoại (Magic Wand) và cắt đuôi trước khi canh giữa, không cần tự khoanh vùng
+- **Auto Shape**: tự chia lại dòng cho vừa hình bóng thoại
+- **Auto Fit**: tự dò cỡ chữ lớn nhất vừa khít bóng thoại
+- Thêm nút **Align** dự phòng — canh giữa thủ công (tự tạo Selection + tự cắt đuôi tay), dùng khi Center tự động canh chưa như ý
+
+**Phím tắt**
+- Win+Ctrl: Dán · Win+Alt: Canh giữa (giữ nguyên)
+- Win+Shift+E / Win+Shift+D: Đổi dòng lên/xuống trong Typer Box
+- Win+Shift+B: Bật/tắt Multiple Bubble
+
+**Khác**
+- Giao diện làm mới hoàn toàn: icon SVG, bố cục gọn hơn
+- Sửa lỗi preview Quick Layout hiển thị sai khi chữ có dấu `<>`
+- **Cần tắt hẳn TyperTool hoặc TypeR** nếu muốn dùng Typer Box chính xác (tránh đụng phím tắt)
+- Ẩn Typer Box trong Setting sẽ tự tắt luôn phím tắt liên quan, không ảnh hưởng 2 tool trên
 ---
   
 ### 🔹 Hướng Dẫn Cài Đặt
