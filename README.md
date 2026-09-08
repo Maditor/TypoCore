@@ -30,7 +30,6 @@ Hướng Dẫn Sử Dụng: https://youtu.be/Rlx4oNQURAU
 ---
 ### 🔹 Yêu Cầu
 - Photoshop từ CC 2018 trở lên
-- Sử dụng cùng với Typer Tool hoặc TypeR để đạt hiệu suất cao hơn
 
 ---
 ### 🔹 Ảnh Gif Xem Trước
