@@ -19,10 +19,12 @@
   - **Auto Shape**: tự chia lại dòng cho vừa hình bóng thoại
   - **Auto Fit**: tự dò cỡ chữ lớn nhất vừa khít bóng thoại
 - Dùng Center để canh lại thủ công khi Align tự động canh chưa như ý
+  
 **Phím tắt**
 - Win+Ctrl: Dán · Win+Alt: Align (tự động)
 - Win+Shift+E / Win+Shift+D: Đổi dòng lên/xuống trong Typer Box
 - Win+Shift+B: Bật/tắt Multiple Bubble
+  
 **Khác**
 - Giao diện làm mới hoàn toàn: icon SVG, bố cục gọn hơn
 - Sửa lỗi preview Quick Layout hiển thị sai khi chữ có dấu `<>`
