@@ -4,15 +4,18 @@
 - Gộp chức năng TyperTool và TypeR thành 1 công cụ mới: **Typer Box**
 - Quản lý style: tạo/sửa/xoá, gộp theo folder, kéo-thả đổi thứ tự
 - Import/Export style dùng chung file với TyperTool hoặc TypeR
+  
 **Multiple Bubble**
 - Chọn lần lượt nhiều bóng thoại, dán hàng loạt đúng dòng vào đúng bóng
 - **Snap Multiple Bubble**: tự tắt sau khi dán hàng loạt xong
 - **Fix MB Position**: tự chỉnh lại vị trí thoại nếu bị lệch sau khi dán
+  
 **Link Quick Layout ↔ Typer Box**
 - Xem trước kiểu cách dòng ngay trên dòng đang dịch trước khi dán
 - Có Selection → dán vào Selection; không có Selection → tự dán vào layer text đang chọn
 - Font preview tự cập nhật khi đổi style
 - Font List chọn qua danh sách font thật trên máy (tối đa 5 slot), không cần gõ tay tên font nữa
+  
 **Center & Align**
 - **Center**: canh giữa vào Selection đã tự chọn + tự cắt đuôi bóng thoại bằng tay (như bản cũ)
 - **Align** (icon dưới cùng, cũng là phím **Win+Alt**): tự nhận diện bóng thoại (Magic Wand) và cắt đuôi trước khi canh giữa, không cần tự khoanh vùng
