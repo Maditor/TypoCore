@@ -35,6 +35,10 @@
       <div id="previewPopup">
 	<div class="preview-header">
           <button id="btnPreviewLoad">Load</button>
+          <div id="btnQLLineNavGroup" style="display:none;">
+            <button id="btnQLLinePrev" title="Previous line">▲</button>
+            <button id="btnQLLineNext" title="Next line">▼</button>
+          </div>
           <button id="btnPreviewToggle">Horizontal</button>
           <button id="btnPreviewMode" title="Toggle toolbar mode">⇆</button>
         </div>
@@ -69,8 +73,7 @@
           </div>
           <div class="preview-subpopup-body" id="fontPickerList"></div>
           <div class="preview-subpopup-footer-add">
-    <input type="text" id="newFontName" placeholder="Font name...">
-    <button id="btnAddFont">[+] Add</button>
+    <button id="btnAddFont">[+] Add slot (max 5)</button>
 </div>
         </div>
       </div>
@@ -276,29 +279,12 @@
 </div><!-- /section-fx -->
 
 <div class="section" id="section-texter" data-drag-id="texter">
-  <button id="btnOpenTexter" style="width:100%;">TypeBox</button>
+  <button id="btnOpenTexter" style="width:100%;">Typer Box</button>
   <div id="texterOverlay" style="display:none; margin-top:4px;">
 
     <input type="file" id="importStylesFile" accept=".json" style="display:none;">
 
-    <div class="tt-preview-bottom">
-      <div class="tt-preview-nav">
-        <button id="btnLinePrev">▲</button>
-        <button id="btnLineNext">▼</button>
-      </div>
-      <div class="tt-preview-current">
-        <div class="tt-preview-line-info">
-          <div class="tt-preview-line-info-text">
-            <b id="pasteCurrentLineNum">line: 0</b>
-            <span class="tt-preview-line-style-name" id="pasteCurrentStyleName">--</span>
-            <span class="tt-preview-line-info-color" id="pasteCurrentColorDot"></span>
-          </div>
-        </div>
-        <div class="tt-preview-line-text" id="pasteLineCurrent"></div>
-      </div>
-    </div>
-
-    <!-- Cố định ngay dưới khung preview — KHÔNG cuộn theo, chỉ phần Style bên dưới mới cuộn -->
+    <!-- Cố định ngay dưới đầu khung — KHÔNG cuộn theo, chỉ phần Style bên dưới mới cuộn -->
     <div class="tt-text-block" id="pasteTextBlock">
       <div class="tt-text-lines" id="pasteLineList"></div>
       <textarea id="pasteTextInput" class="tt-text-area" rows="2" wrap="soft" placeholder="Paste your translation here..."></textarea>
@@ -306,12 +292,16 @@
     </div>
     <div class="tt-text-resize-handle" id="pasteTextResizeHandle"></div>
 
+    <!-- Neo cứng ngay dưới ô dán — KHÔNG cuộn theo, chỉ phần Style bên dưới mới cuộn -->
+    <div class="tt-styles-toolbar">
+      <button id="btnLinePrev" class="tt-folder-add-btn" title="Previous line">▲</button>
+      <button id="btnLineNext" class="tt-folder-add-btn" title="Next line">▼</button>
+      <span style="flex:1;"></span>
+      <button id="btnAddFolder" class="tt-folder-add-btn" title="New folder"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z"/></svg></button>
+      <button id="btnSaveTextPreset" class="tt-folder-add-btn" title="Add style">+</button>
+    </div>
+
     <div class="tt-texter-scroll" id="texterScroll">
-      <div class="tt-styles-toolbar">
-        <span class="tt-styles-toolbar-title">Styles</span>
-        <button id="btnAddFolder" class="tt-folder-add-btn" title="New folder"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z"/></svg></button>
-        <button id="btnSaveTextPreset" class="tt-folder-add-btn" title="Add style">+</button>
-      </div>
       <div id="stylesFoldersContainer"></div>
     </div>
     <div class="tt-resize-handle" id="texterResizeHandle"></div>
@@ -324,7 +314,7 @@
   <div class="tt-style-edit-panel">
     <div class="tt-style-edit-header">
       <span id="styleEditTitle">Style</span>
-      <button id="btnStyleEditClose" class="tt-style-edit-x">✕</button>
+      <button id="btnStyleEditClose" class="tt-style-edit-x"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
     </div>
     <div class="tt-style-edit-body">
       <label class="tt-style-edit-row">
@@ -336,7 +326,7 @@
         <select id="styleEditFolder"></select>
       </label>
 
-      <button id="btnStyleEditCopyFromLayer" class="tt-style-edit-copybtn">⤓ Copy style from active layer</button>
+      <button id="btnStyleEditCopyFromLayer" class="tt-style-edit-copybtn"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="4" y="4" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M2 10V2H10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg> Copy layer style</button>
 
       <div class="tt-style-edit-fields" id="styleEditFields" style="display:none;">
         <label class="tt-style-edit-row">
@@ -344,28 +334,100 @@
           <select id="styleEditFont"></select>
         </label>
         <div class="tt-style-edit-row2">
-          <label><span>Size (pt)</span><input type="number" id="styleEditSize" min="1" step="0.5"></label>
-          <label><span>Leading (pt)</span><input type="number" id="styleEditLeading" min="0" step="0.5" placeholder="auto"></label>
+          <div class="tt-field-row" title="Font size">
+            <span class="tt-field-icon"><svg width="16" height="14" viewBox="0 0 16 14" fill="none"><path d="M1 2H9M5 2V12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 1V13" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M11 3L13 1L15 3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 11L13 13L15 11" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <div class="tt-numfield"><input type="number" id="styleEditSize" min="1" step="0.5"><span class="tt-unit">pt</span></div>
+          </div>
+          <div class="tt-field-row" title="Line spacing">
+            <span class="tt-field-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 3H9M7 3V11M5 11H9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 5V1M2 1L1 2.5M2 1L3 2.5" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 9V13M2 13L1 11.5M2 13L3 11.5" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <div class="tt-numfield"><input type="number" id="styleEditLeading" min="0" step="0.5" placeholder="auto"><span class="tt-unit">pt</span></div>
+          </div>
         </div>
         <div class="tt-style-edit-row2" id="styleEditAutoLeadingRow">
-          <label><span>Auto leading %</span><input type="number" id="styleEditAutoLeadingPct" min="0" step="1" placeholder="120"></label>
+          <label title="Auto leading percentage"><span>Auto leading %</span><input type="number" id="styleEditAutoLeadingPct" min="0" step="1" placeholder="120"></label>
         </div>
-        <label class="tt-style-edit-row">
-          <span>Color</span>
-          <input type="color" id="styleEditColor">
-        </label>
+        <div class="tt-style-edit-row2">
+          <div class="tt-field-row" title="Kerning method">
+            <span class="tt-field-icon"><svg width="16" height="14" viewBox="0 0 16 14" fill="none"><text x="0" y="10" font-size="9" fill="currentColor" font-family="sans-serif">AW</text></svg></span>
+            <select id="styleEditKerning">
+              <option value="metricsKern">Metrics</option>
+              <option value="opticalKern">Optical</option>
+              <option value="noKern">None</option>
+            </select>
+          </div>
+          <div class="tt-field-row" title="Letter spacing">
+            <span class="tt-field-icon"><svg width="16" height="14" viewBox="0 0 16 14" fill="none"><text x="2" y="10" font-size="9" fill="currentColor" font-family="sans-serif">A-Z</text></svg></span>
+            <div class="tt-numfield"><input type="number" id="styleEditTracking" step="10"></div>
+          </div>
+        </div>
+        <div class="tt-style-edit-row2">
+          <div class="tt-field-row" title="Vertical scale">
+            <span class="tt-field-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1V13M4 4L7 1L10 4M4 10L7 13L10 10" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <div class="tt-numfield"><input type="number" id="styleEditVScale" step="1" min="1"><span class="tt-unit">%</span></div>
+          </div>
+          <div class="tt-field-row" title="Horizontal scale">
+            <span class="tt-field-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7H13M4 4L1 7L4 10M10 4L13 7L10 10" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <div class="tt-numfield"><input type="number" id="styleEditHScale" step="1" min="1"><span class="tt-unit">%</span></div>
+          </div>
+        </div>
+        <div class="tt-style-edit-row2">
+          <div class="tt-field-row" title="Baseline shift">
+            <span class="tt-field-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 11H13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M4 3V9M10 3V9M4 6H10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <div class="tt-numfield"><input type="number" id="styleEditBaseline" step="0.5"><span class="tt-unit">pt</span></div>
+          </div>
+          <div class="tt-field-row" title="Text color">
+            <span class="tt-field-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><text x="1" y="11" font-size="11" fill="currentColor" font-family="serif" font-weight="700">A</text></svg></span>
+            <input type="color" id="styleEditColor" class="tt-colorswatch">
+          </div>
+        </div>
+        <div class="tt-style-edit-row2">
+          <div class="tt-field-row" title="Anti-aliasing method" style="flex:1;">
+            <span class="tt-field-icon"><svg width="16" height="14" viewBox="0 0 16 14" fill="none"><text x="0" y="11" font-size="10" fill="currentColor" font-family="sans-serif">Aa</text></svg></span>
+            <select id="styleEditAntiAlias">
+              <option value="antiAliasNone">None</option>
+              <option value="antiAliasSharp">Sharp</option>
+              <option value="antiAliasCrisp">Crisp</option>
+              <option value="antiAliasStrong">Strong</option>
+              <option value="antiAliasSmooth">Smooth</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="tt-style-toggle-row">
+          <button type="button" id="styleToggleBold" class="tt-style-toggle-btn" title="Bold"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><text x="2" y="11" font-size="12" font-weight="900" fill="currentColor" font-family="serif">B</text></svg></button>
+          <button type="button" id="styleToggleItalic" class="tt-style-toggle-btn" title="Italic"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><text x="3" y="11" font-size="12" font-style="italic" fill="currentColor" font-family="serif">I</text></svg></button>
+          <button type="button" id="styleToggleAllCaps" class="tt-style-toggle-btn" title="All Caps"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><text x="1" y="11" font-size="10" font-weight="700" fill="currentColor" font-family="serif">TT</text></svg></button>
+          <button type="button" id="styleToggleSmallCaps" class="tt-style-toggle-btn" title="Small Caps"><svg width="16" height="14" viewBox="0 0 16 14" fill="none"><text x="0" y="11" font-size="11" font-weight="700" fill="currentColor" font-family="serif">T</text><text x="8" y="11" font-size="8" font-weight="700" fill="currentColor" font-family="serif">T</text></svg></button>
+        </div>
+
         <div class="tt-style-edit-align-row">
-          <span>Align</span>
-          <button type="button" id="styleEditAlignLeft" class="tt-align-btn-small" data-align="left">Left</button>
-          <button type="button" id="styleEditAlignCenter" class="tt-align-btn-small" data-align="center">Center</button>
-          <button type="button" id="styleEditAlignRight" class="tt-align-btn-small" data-align="right">Right</button>
+          <button type="button" id="styleEditAlignLeft" class="tt-align-btn-small" data-align="left" title="Align left"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 3H13M1 6H9M1 9H13M1 12H7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg></button>
+          <button type="button" id="styleEditAlignCenter" class="tt-align-btn-small" data-align="center" title="Align center"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 3H13M3 6H11M1 9H13M4 12H10" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg></button>
+          <button type="button" id="styleEditAlignRight" class="tt-align-btn-small" data-align="right" title="Align right"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 3H13M5 6H13M1 9H13M7 12H13" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg></button>
+          <button type="button" id="styleToggleHyphenate" class="tt-align-btn-small" title="Hyphenate"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 3H13M1 6H13M1 9H13M1 12H9" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg></button>
+          <button type="button" id="styleToggleHangingRoman" class="tt-align-btn-small" title="Hanging punctuation"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><text x="1" y="11" font-size="12" fill="currentColor" font-family="serif">"</text></svg></button>
+        </div>
+        <div class="tt-style-edit-align-row">
+          <button type="button" id="styleToggleSuper" class="tt-align-btn-small" title="Superscript"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><text x="0" y="13" font-size="9" fill="currentColor" font-family="serif" font-weight="700">T</text><text x="8" y="7" font-size="6" fill="currentColor" font-family="serif" font-weight="700">'</text></svg></button>
+          <button type="button" id="styleToggleSub" class="tt-align-btn-small" title="Subscript"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><text x="0" y="11" font-size="9" fill="currentColor" font-family="serif" font-weight="700">T</text><text x="8" y="14" font-size="6" fill="currentColor" font-family="serif" font-weight="700">,</text></svg></button>
+          <button type="button" id="styleToggleUnderline" class="tt-align-btn-small" title="Underline"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><text x="2" y="10" font-size="10" fill="currentColor" font-family="serif" font-weight="700">U</text><path d="M1 13H13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></button>
+          <button type="button" id="styleToggleStrike" class="tt-align-btn-small" title="Strikethrough"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><text x="2" y="11" font-size="10" fill="currentColor" font-family="serif" font-weight="700">S</text><path d="M1 7H13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></button>
+        </div>
+
+        <div class="tt-style-edit-row2" style="align-items:center;">
+          <label style="flex:0 0 auto; display:flex; align-items:center; gap:4px; margin:0;" title="Enable stroke">
+            <input type="checkbox" id="styleEditStrokeEnabled" style="margin:0;"><span style="margin:0;">Stroke</span>
+          </label>
+          <div class="tt-numfield" style="flex:1;" title="Stroke size (px)">
+            <input type="number" id="styleEditStrokeSize" min="0" step="0.5"><span class="tt-unit">px</span>
+          </div>
+          <input type="color" id="styleEditStrokeColor" class="tt-colorswatch tt-colorswatch-lg" title="Stroke color">
         </div>
       </div>
     </div>
     <div class="tt-style-edit-footer">
-      <button id="btnStyleEditDelete" class="tt-style-edit-delete" style="display:none;">Delete</button>
-      <button id="btnStyleEditCancel">Cancel</button>
-      <button id="btnStyleEditSave" class="tt-big-btn">Save</button>
+      <button id="btnStyleEditSave" class="tt-big-btn"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="1.5" stroke="currentColor" stroke-width="1.2"/><rect x="4" y="1" width="6" height="4" rx="0.5" fill="currentColor"/><rect x="3" y="7" width="8" height="5" rx="0.5" fill="currentColor"/></svg> Save</button>
+      <button id="btnStyleEditDelete" class="tt-style-edit-delete" style="display:none;"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4H12M5 4V2.5C5 2.22 5.22 2 5.5 2H8.5C8.78 2 9 2.22 9 2.5V4M5.5 6V10.5M8.5 6V10.5M3 4L3.5 11.5C3.5 11.78 3.72 12 4 12H10C10.28 12 10.5 11.78 10.5 11.5L11 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg> Delete</button>
     </div>
   </div>
 </div>
@@ -405,7 +467,7 @@
     <!-- hàng 1 -->
    <div class="action-row" id="row-group-center">
   <button data-tool="groupText" onclick="runBtn('groupTextLayers()', this)">Group</button>
-  <button data-tool="center"    onclick="runBtn('alignCenter()', this)">Center</button>
+  <button data-tool="center"    onclick="runBtn('alignCenterSimple()', this)">Center</button>
 </div>
 
 <div class="action-row" id="row-copypaste">
@@ -433,12 +495,20 @@
       <button id="btnMBClear" class="mb-info-link">Clear</button>
     </div>
     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-      <span class="footer-credit">TypoCore By Maditor</span>
-      <div class="setting-wrapper" style="display:flex; align-items:center; gap:6px;">
-        <button class="setting-btn" id="btnMultipleBubble" title="Multiple Bubble">
-          <span id="mbDot" class="mb-dot"></span>MB
-        </button>
-        <button class="setting-btn" id="settingBtn">Setting</button>
+      <button class="setting-btn" id="btnToggleAutoShape" title="Auto Shape">
+        <span id="autoShapeDot" class="mb-dot"></span><svg width="16" height="14" viewBox="0 0 16 14" fill="none"><ellipse cx="8" cy="7" rx="7" ry="6" stroke="currentColor" stroke-width="1.1"/><path d="M6 4H10M4.5 7H11.5M6 10H10" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>
+      </button>
+      <button class="setting-btn" id="btnToggleAutoFit" title="Auto Fit">
+        <span id="autoFitDot" class="mb-dot"></span><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="1.5" stroke="currentColor" stroke-width="1"/><path d="M4 4H10M7 4V10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M2.5 2.5L1 1M11.5 2.5L13 1M2.5 11.5L1 13M11.5 11.5L13 13" stroke="currentColor" stroke-width="0.8" stroke-linecap="round"/></svg>
+      </button>
+      <button class="setting-btn" id="btnAlignSimple" title="Align">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
+      </button>
+      <button class="setting-btn" id="btnMultipleBubble" title="Multiple Bubble">
+        <span id="mbDot" class="mb-dot"></span><svg width="18" height="16" viewBox="0 0 20 18" fill="none"><rect x="1" y="1" width="11" height="8" rx="2" stroke="currentColor" stroke-width="1.1"/><path d="M4 9L3 13L7 9.5" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"/><ellipse cx="13.5" cy="10.5" rx="5.5" ry="5" stroke="currentColor" stroke-width="1.1"/><path d="M17 14.5L18.5 17L14 15" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"/></svg>
+      </button>
+      <div class="setting-wrapper" style="position:relative;">
+        <button class="setting-btn" id="settingBtn" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
         <div class="setting-popup" id="settingPopup">
         <div class="setting-item" data-action="chooseLogo"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;flex-shrink:0;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Choose Logo</div>
         <div class="setting-item" data-action="pasteAllOpened"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;flex-shrink:0;"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>Paste Logo to All Opened</div>
@@ -460,22 +530,27 @@
           <div class="setting-item" data-toggle="autoFX" style="padding-left:24px;">
             <input type="checkbox" id="toggle_autoFX"> Auto FX
           </div>
-          <div class="setting-item" style="padding-left:24px;">
-            <input type="checkbox" id="toggle_linkQuickLayoutTexter"> Link Q.Layout to TypeBox
-          </div>
-          <div class="setting-item" style="padding-left:24px;">
-            <input type="checkbox" id="toggle_fixMBPosition"> Fix MB position
-          </div>
-          <div class="setting-item" style="padding-left:24px;">
-            <input type="checkbox" id="toggle_snapMultiBubble"> Snap Multi Bubble
-          </div>
         </div>
 <div class="setting-separator"></div>
 <div class="setting-item" id="textSettingToggle" style="cursor: pointer; justify-content: space-between;">
-    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;flex-shrink:0;"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>TypeBox Setting</span>
+    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;flex-shrink:0;"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>Typer Box Setting</span>
     <span id="textSettingArrow" style="font-size: 10px;">▼</span>
 </div>
 <div id="textSettingSub" style="display: none;">
+    <div class="setting-item" id="btnOpenShortcutsEditor" style="padding-left:24px; cursor:pointer;">⌨ Edit Shortcuts...</div>
+    <div class="setting-item" style="padding-left:24px;">
+      <input type="checkbox" id="toggle_linkQuickLayoutTexter"> Link to Quick Layout
+    </div>
+    <div class="setting-item" style="padding-left:24px;">
+      <input type="checkbox" id="toggle_fixMBPosition"> Fix MB position
+    </div>
+    <div class="setting-item" style="padding-left:24px;">
+      <input type="checkbox" id="toggle_snapMultiBubble"> Snap Multi Bubble
+    </div>
+    <div class="setting-item" style="padding-left:24px; display:flex; align-items:center; justify-content:space-between; gap:8px;" title="Padding used by Auto Shape/Auto Fit when calculating the text area inside a speech bubble">
+      <span>Ref No.</span>
+      <input type="number" id="inputAutoFitPadding" min="0" max="100" step="1" style="width:50px; background:#1a1a1a; color:#ddd; border:1px solid #444; border-radius:3px; padding:2px 6px; font-size:11px;">
+    </div>
     <div class="setting-item" data-action="importStylesMain" style="padding-left:24px; cursor:pointer;">⇩ Import styles...</div>
     <div class="setting-item" data-action="exportStylesMain" style="padding-left:24px; cursor:pointer;">⇧ Export styles...</div>
 </div>
@@ -490,7 +565,7 @@
 </div>
         <div class="setting-separator"></div>
         <div class="setting-item" id="toolManagerToggle" style="cursor: pointer; justify-content: space-between;">
-          <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;flex-shrink:0;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Hide/Unhide Tool</span>
+          <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;flex-shrink:0;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Show/Hide Tool</span>
           <span id="toolManagerArrow" style="font-size: 10px;">▼</span>
         </div>
         <div id="toolManagerSub" style="display: none;">
@@ -498,7 +573,7 @@
     <input type="checkbox" id="toggle_quickLayout"> Quick Layout
   </div>
   <div class="setting-item" data-toggle="texterStudio">
-    <input type="checkbox" id="toggle_texterStudio"> TypeBox
+    <input type="checkbox" id="toggle_texterStudio"> Typer Box
   </div>
   <div class="setting-item" style="justify-content: space-between; padding-right: 8px;">
     <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
@@ -563,6 +638,44 @@
     </div>
   </div>
 
+</div>
+</div>
+
+<!-- EDIT SHORTCUTS -->
+<div id="shortcutsEditorOverlay" class="tt-style-edit-overlay" style="display:none;">
+  <div class="tt-style-edit-panel" style="max-width:280px;">
+    <div class="tt-style-edit-header">
+      <span>Edit Shortcuts</span>
+      <button id="btnShortcutsEditorClose" class="tt-style-edit-x"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+    </div>
+    <div class="tt-style-edit-body">
+      <p class="tt-shortcut-warning">Check that your chosen keys don't clash with Photoshop or Windows shortcuts.</p>
+
+      <div class="tt-shortcut-row tt-shortcut-locked">
+        <span class="tt-shortcut-label">Paste</span>
+        <span class="tt-shortcut-key">Win+Ctrl</span>
+      </div>
+      <div class="tt-shortcut-row tt-shortcut-locked">
+        <span class="tt-shortcut-label">Align</span>
+        <span class="tt-shortcut-key">Win+Alt</span>
+      </div>
+      <div class="tt-shortcut-row">
+        <span class="tt-shortcut-label">Move Up</span>
+        <button class="tt-shortcut-key-btn" id="btnShortcutMoveUp" data-shortcut="moveUp">Win+Shift+E</button>
+      </div>
+      <div class="tt-shortcut-row">
+        <span class="tt-shortcut-label">Move Down</span>
+        <button class="tt-shortcut-key-btn" id="btnShortcutMoveDown" data-shortcut="moveDown">Win+Shift+D</button>
+      </div>
+      <div class="tt-shortcut-row">
+        <span class="tt-shortcut-label">Toggle Multiple Bubble</span>
+        <button class="tt-shortcut-key-btn" id="btnShortcutToggleMB" data-shortcut="toggleMB">Win+Shift+B</button>
+      </div>
+    </div>
+    <div class="tt-style-edit-footer">
+      <button id="btnShortcutsReset" style="flex:1;">Reset to Default</button>
+    </div>
+  </div>
 </div>
 
 <div id="colorPickerPopup" style="display: none;">

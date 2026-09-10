@@ -40,8 +40,12 @@ var _typoCoreLoaded = true;
 function getHotkeyCombo() {
   try {
     var k = ScriptUI.environment.keyboardState;
-    if (k.metaKey && k.ctrlKey) return "metaCtrl"; // Win+Ctrl
-    if (k.metaKey && k.altKey) return "metaAlt"; // Win+Alt
+    // Win+Ctrl/Win+Alt luôn khoá cứng, bắn ngay không cần chờ gì (không còn đụng độ với Win+Shift+X
+    // vì khác hẳn nhóm phím bổ trợ). Win+Shift+X (3 chức năng còn lại) do người dùng tự gán trong
+    // "Edit Shortcuts" -> trả về đúng ký tự đọc được (nếu có), để client tự so khớp.
+    if (k.metaKey && k.ctrlKey) return "metaCtrl";
+    if (k.metaKey && k.altKey) return "metaAlt";
+    if (k.metaKey && k.shiftKey && k.keyName) return "winShift:" + String(k.keyName).toUpperCase();
     return "";
   } catch (e) {
     return "";
@@ -561,15 +565,65 @@ function saveTextFile(content, defaultName) {
   }
 }
 
-function alignCenter() {
+// Canh giữa ĐƠN GIẢN, y hệt bản TypoCore cũ trước khi có engine TypeR — KHÔNG tự Magic Wand,
+// KHÔNG chạy chuỗi cắt đuôi, KHÔNG Auto Shape/Fit. Người dùng tự tạo Selection + tự cắt đuôi bóng
+// thoại bằng tay (Select > Modify), hàm chỉ lo đúng 1 việc: canh layer chữ vào giữa Selection đó.
+// Dùng làm phương án dự phòng đáng tin cậy trong lúc chuỗi cắt đuôi tự động còn đang có lỗi lệch
+// chưa xác định được nguyên nhân chính xác.
+function alignCenterSimple() {
+  var doc = app.activeDocument;
+  var layer = getLayer();
+  if (!layer) return "NO_LAYER";
+  try {
+    var cx, cy, hadSelection = false;
+    try {
+      var sel = doc.selection.bounds;
+      cx = (sel[0].as("px") + sel[2].as("px")) / 2;
+      cy = (sel[1].as("px") + sel[3].as("px")) / 2;
+      hadSelection = true;
+    } catch (e) {
+      cx = doc.width.as("px") / 2;
+      cy = doc.height.as("px") / 2;
+    }
+
+    var dup = layer.duplicate();
+    dup.rasterize(RasterizeType.ENTIRELAYER);
+    var tb = dup.bounds;
+    var tLeft = tb[0].as("px"), tTop = tb[1].as("px"), tRight = tb[2].as("px"), tBottom = tb[3].as("px");
+    var tx = (tLeft + tRight) / 2;
+    var ty = (tTop + tBottom) / 2;
+    dup.remove();
+
+    var dx = cx - tx, dy = cy - ty;
+    layer.translate(new UnitValue(dx, "px"), new UnitValue(dy, "px"));
+
+    if (hadSelection) doc.selection.deselect();
+    app.refresh();
+    return "OK";
+  } catch (e) {
+    return "ERROR:" + e.message;
+  }
+}
+
+function alignCenter(autoShape, autoFit, padding) {
   // Nâng cấp từ TypeR: khi KHÔNG có Selection -> tự Magic Wand nhận diện vùng màu (bóng thoại)
   // ngay cạnh layer text đang chọn, rồi áp chuỗi co/giãn để "cắt đuôi" bóng thoại trước khi canh
   // giữa. Khi ĐÃ có Selection sẵn -> canh giữa layer vào đúng vùng đó (như alignCenter cũ).
+  // autoShape/autoFit (tùy chọn, Typer Box Setting): nếu bật, sau khi canh giữa sẽ tự chia lại dòng
+  // và/hoặc dò cỡ chữ lớn nhất vừa khít bóng thoại (TypeR - darkmax159159357 fork, gốc Arcanos
+  // AL3mla8, MIT License) — dùng chung đúng vùng bóng thoại vừa canh giữa, không dò lại lần nữa.
+  // padding (Ref No. trong Typer Box Setting): khoảng lề dùng khi tính vùng chữ trong bóng thoại,
+  // mặc định 10 nếu không truyền.
   try {
-    var res = TR_alignTextLayerToSelection();
+    var res = TR_alignTextLayerToSelection(!!autoShape, !!autoFit, padding);
     if (res === "") {
       app.refresh();
       return "OK";
+    }
+    if (res.indexOf("autoFitError:") === 0) {
+      // Canh giữa vẫn thành công, chỉ riêng Auto Shape/Fit bị lỗi -> vẫn refresh vì layer đã đổi vị trí
+      app.refresh();
+      return "AUTOFIT_ERROR:" + res.slice("autoFitError:".length);
     }
     if (res === "doc") return "NO_DOC";
     if (res === "layer") return "NO_LAYER";
@@ -6642,13 +6696,13 @@ function copyFX() {
       var r;
       if (l && u) {
         r = u.textProps;
-        r.layerText.textKey = l.replace(/\n+/g, "");
+        r.layerText.textKey = l.replace(/\n+/g, "\r");
         r.layerText.textStyleRange[0].to = l.length;
         r.layerText.paragraphStyleRange[0].to = l.length;
       } else if (l) {
         r = {
           "layerText": {
-            "textKey": l.replace(/\n+/g, "")
+            "textKey": l.replace(/\n+/g, "\r")
           }
         };
         if (t.layerText.textStyleRange && t.layerText.textStyleRange[0]) {
@@ -6938,6 +6992,7 @@ function copyFX() {
       if (!payload || !payload.style || !payload.style.textProps) return "NO_STYLE";
       var res = createTextLayerInSelection(payload, false);
       if (res) return "ERR:" + res; // "doc" | "sel" ...
+      if (payload.stroke) TR_setLayerStroke(payload.stroke);
       app.refresh();
       return "OK";
     } catch (e) {
@@ -6949,6 +7004,7 @@ function copyFX() {
     try {
       var res = setActiveLayerText(payload);
       if (res) return "ERR:" + res; // "doc" | "layer"
+      if (payload.stroke) TR_setLayerStroke(payload.stroke);
       app.refresh();
       return "OK";
     } catch (e) {
@@ -12339,7 +12395,7 @@ function copyFX() {
   }
 
   function _setLayerStroke(e) {
-    if (!e || e.size <= 0 && e.enabled !== true) return;
+    if (!e || !e.enabled || !(e.size > 0)) return;
     var t = new ActionDescriptor();
     var a = new ActionReference();
     a.putProperty(charIDToTypeID("Prpr"), charIDToTypeID("Lefx"));
@@ -12351,7 +12407,12 @@ function copyFX() {
     n.putBoolean(charIDToTypeID("enab"), true);
     n.putBoolean(stringIDToTypeID("present"), true);
     n.putBoolean(stringIDToTypeID("showInDialog"), true);
-    n.putEnumerated(charIDToTypeID("Styl"), charIDToTypeID("FStl"), charIDToTypeID("OutF"));
+    // Vị trí viền: Outer/Center/Inner — bản gốc TypeR luôn cố định "OutF" (Outer), giờ đọc đúng
+    // theo e.position để 3 lựa chọn trên giao diện thực sự có tác dụng khác nhau.
+    var posEnum = "OutF";
+    if (e.position === "center") posEnum = "CtrF";
+    else if (e.position === "inner") posEnum = "InsF";
+    n.putEnumerated(charIDToTypeID("Styl"), charIDToTypeID("FStl"), charIDToTypeID(posEnum));
     n.putEnumerated(charIDToTypeID("PntT"), charIDToTypeID("FrFl"), charIDToTypeID("SClr"));
     n.putEnumerated(charIDToTypeID("Md  "), charIDToTypeID("BlnM"), charIDToTypeID("Nrml"));
     n.putUnitDouble(charIDToTypeID("Sz  "), charIDToTypeID("#Pxl"), e.size || 3);
@@ -12471,7 +12532,7 @@ function copyFX() {
 
   function _createAndSetLayerText(e, t, a) {
     var r = _ensureStyle(e.style);
-    r.textProps.layerText.textKey = e.text.replace(/\n+/g, "");
+    r.textProps.layerText.textKey = e.text.replace(/\n+/g, "\r");
     r.textProps.layerText.textStyleRange[0].to = e.text.length;
     r.textProps.layerText.paragraphStyleRange[0].to = e.text.length;
     _applyRichTextRanges(r.textProps, e.richTextRuns, e.text.length);
@@ -12625,7 +12686,7 @@ function copyFX() {
         if (r.layerText.textStyleRange[0].textStyle.size == null && a.layerText.textStyleRange && a.layerText.textStyleRange[0] && a.layerText.textStyleRange[0].textStyle.size != null) {
           r.layerText.textStyleRange[0].textStyle.size = a.layerText.textStyleRange[0].textStyle.size;
         }
-        r.layerText.textKey = P.replace(/\n+/g, "");
+        r.layerText.textKey = P.replace(/\n+/g, "\r");
         r.layerText.textStyleRange[0].to = P.length;
         r.layerText.paragraphStyleRange[0].to = P.length;
         F = P.length;
@@ -12633,7 +12694,7 @@ function copyFX() {
       } else if (P) {
         r = {
           "layerText": {
-            "textKey": P.replace(/\n+/g, "")
+            "textKey": P.replace(/\n+/g, "\r")
           }
         };
         if (a.layerText.textStyleRange && a.layerText.textStyleRange[0]) {
@@ -12761,6 +12822,97 @@ function copyFX() {
     e.result = "";
   }
 
+  // Ghi log debug rỗng (bản gốc TypeR ghi vào 1 buffer để debug, TypoCore không cần hiện ra) —
+  // giữ hàm này để không phải sửa lại hàng trăm chỗ gọi _logDebug(...) trong code Auto-Fit gốc.
+  // Đo tâm layer chữ bằng cách duplicate + Rasterize rồi đo bounds pixel THẬT (giống bản gốc trước
+  // khi có Align/Auto-Fit) — thay cho _getCurrentTextLayerBounds() (đọc "bounds" qua Action Manager
+  // trên layer vector chưa rasterize), vì cách đó có thể lệch so với pixel thật sự hiển thị, gây
+  // canh giữa bị lệch có hệ thống (thường lệch trái) đã xác nhận qua so sánh với bản cũ.
+  function _logDebug(msg) {}
+
+  // Đo tâm layer chữ bằng cách duplicate + Rasterize rồi đo bounds pixel THẬT (giống bản gốc
+  // TypoCore trước khi có Align/Auto-Fit) — thay cho _getCurrentTextLayerBounds() (đọc "bounds"
+  // qua Action Manager trên layer vector chưa render, có thể dựa theo font metrics/ascent-descent
+  // chứ không phải mực thật đã in ra — với tiếng Việt có dấu, dòng có dấu và dòng không dấu sẽ cho
+  // kết quả đo không nhất quán, gây lệch tâm theo trục dọc).
+  function _getRasterizedTextLayerBounds() {
+    var layer = app.activeDocument.activeLayer;
+    var dup = layer.duplicate();
+    dup.rasterize(RasterizeType.ENTIRELAYER);
+    var b = dup.bounds;
+    var left = b[0].as("px"), top = b[1].as("px"), right = b[2].as("px"), bottom = b[3].as("px");
+    dup.remove();
+    app.activeDocument.activeLayer = layer; // duplicate()/remove() có thể đổi layer active -> khôi
+                                             // phục đúng lại layer chữ gốc, tránh bước sau (di
+                                             // chuyển layer) bị nhắm nhầm sang layer khác.
+    return {
+      "top": top, "left": left, "right": right, "bottom": bottom,
+      "width": right - left, "height": bottom - top,
+      "xMid": (left + right) / 2, "yMid": (top + bottom) / 2
+    };
+  }
+
+  function _isCJK(e) {var t = e.charCodeAt(0);return t >= 19968 && t <= 40959 || t >= 13312 && t <= 19903 || t >= 12352 && t <= 12447 || t >= 12448 && t <= 12543 || t >= 44032 && t <= 55215 || t >= 65280 && t <= 65519;}
+  function _estimateCharWidth(e) {var t = e.charCodeAt(0);if (_isCJK(e)) return 2;if (t >= 1536 && t <= 1791) return 1.1;if (t >= 1872 && t <= 1919) return 1.1;if (t >= 64336 && t <= 65023) return 1.1;if (t >= 65136 && t <= 65279) return 1.1;if (t >= 3584 && t <= 3711) return 1.2;if (t >= 2304 && t <= 2431) return 1.2;if (e === "M" || e === "W") return 1.5;if (e >= "A" && e <= "Z") return 1.2;if (e === "m" || e === "w") return 1.4;if (e === "i" || e === "l" || e === "!" || e === "|" || e === "1") return .5;if (e === "j" || e === "f" || e === "t" || e === "r") return .7;if (e === "." || e === "," || e === ":" || e === ";" || e === "'" || e === '"') return .4;if (e === "-" || e === "–" || e === "—") return .7;if (e === "…") return 1.5;return 1;}
+  function _estimateWordWidth(e) {var t = 0;for (var r = 0; r < e.length; r++) {var a = e.charCodeAt(r);if (a >= 55296 && a <= 56319 && r + 1 < e.length) {var n = e.charCodeAt(r + 1);if (n >= 56320 && n <= 57343) {t += 2;r++;continue;}}t += _estimateCharWidth(e.charAt(r));}return t;}
+  function _splitTextToWords(e) {var t = [];var r = "";for (var a = 0; a < e.length; a++) {var n = e.charAt(a);var o = e.charCodeAt(a);if (o >= 55296 && o <= 56319 && a + 1 < e.length) {var i = e.charCodeAt(a + 1);if (i >= 56320 && i <= 57343) {if (r.length > 0) {t.push(r);r = "";}t.push(e.charAt(a) + e.charAt(a + 1));a++;continue;}}if (n === " ") {if (r.length > 0) {t.push(r);r = "";}} else if (_isCJK(n)) {if (r.length > 0) {t.push(r);r = "";}t.push(n);} else {r += n;}}if (r.length > 0) t.push(r);return t;}
+  function _joinWords(e) {if (e.length === 0) return "";var t = e[0];for (var r = 1; r < e.length; r++) {var a = t.charAt(t.length - 1);var n = e[r].charAt(0);if (_isCJK(a) || _isCJK(n)) {t += e[r];} else {t += " " + e[r];}}return t;}
+  function _startsWithEllipsis(e) {if (e.charAt(0) === "…") return true;if (e.length >= 3 && e.charAt(0) === "." && e.charAt(1) === "." && e.charAt(2) === ".") return true;return false;}
+  function _endsWithEllipsis(e) {var t = e.length;if (t > 0 && e.charAt(t - 1) === "…") return true;if (t >= 3 && e.charAt(t - 1) === "." && e.charAt(t - 2) === "." && e.charAt(t - 3) === ".") return true;return false;}
+  function _padLineBreaks(e) {var t = e.replace(/([^ ])\r/g, "$1 \r");var r = t.split("\r");for (var a = 0; a < r.length; a++) {var n = r[a];var o = n.replace(/^\s+/, "").replace(/\s+$/, "");if (o.length > 1 && _startsWithEllipsis(o)) {r[a] = "  " + n;}o = r[a].replace(/^\s+/, "").replace(/\s+$/, "");if (o.length > 1 && _endsWithEllipsis(o)) {r[a] = r[a] + "  ";}}return r.join("\r");}
+  function _makeDiamondTargets(e, t) {var r = [], a = 0;if (e <= 2) {r = e === 1 ? [ 1 ] : [ 1.1, .9 ];a = e === 1 ? 1 : 2;} else {var n = e / 2;for (var o = 0; o < e; o++) {var i = o + .5 - n;var s = Math.sqrt(1 - i * i / (n * n));if (s < .35) s = .35;r.push(s);a += s;}}var l = [];for (var o = 0; o < e; o++) l.push(r[o] / a * t);return l;}
+  function _optimalSplit(e, t, r, a) {var n = e.length;var o = a;var i = .5;if (o >= n) {var s = [];for (var l = 0; l < n; l++) s.push(e[l]);return s.join("\r");}var c = [ 0 ];for (var l = 0; l < n; l++) {c.push(c[l] + t[l]);}var u = 1e18;var p = [];var g = [];for (var l = 0; l <= n; l++) {p.push([]);g.push([]);for (var h = 0; h <= o; h++) {p[l].push(u);g[l].push(0);}}p[0][0] = 0;for (var h = 1; h <= o; h++) {for (var l = h; l <= n - (o - h); l++) {for (var f = h - 1; f < l; f++) {if (p[f][h - 1] >= u) continue;var d = l - f - 1;var y = c[l] - c[f] + d * i;var v = r[h - 1];var m = y - v;var b = p[f][h - 1] + m * m;if (b < p[l][h]) {p[l][h] = b;g[l][h] = f;}}}}var T = [];var D = n;for (var h = o; h >= 1; h--) {T.push(g[D][h]);D = g[D][h];}T.reverse();T.push(n);var x = [];for (var l = 0; l < o; l++) {var S = [];for (var I = T[l]; I < T[l + 1]; I++) {S.push(e[I]);}x.push(_joinWords(S));}return x.join("\r");}
+  function _shapeEqualLines(e, t) {if (t > e.length) t = e.length;if (t <= 1) return _joinWords(e);var r = [];var a = 0;for (var n = 0; n < e.length; n++) {r.push(_estimateWordWidth(e[n]));a += r[n];}var o = a / t;var i = [];for (var n = 0; n < t; n++) {i.push(o);}return _optimalSplit(e, r, i, t);}
+  function _shapeWide(e) {var t;if (e.length <= 5) t = 2; else if (e.length <= 12) t = 3; else if (e.length <= 20) t = 4; else t = 5;if (t > e.length) t = e.length;return _shapeEqualLines(e, t);}
+  function _shapeTall(e) {var t = Math.min(Math.max(4, Math.ceil(e.length / 2)), 7);return _shapeEqualLines(e, t);}
+  function _getLineWidthsFromLines(e) {
+    var t = [];
+    for (var r = 0; r < e.length; r++) {
+      var a = _splitTextToWords(e[r]);
+      var n = 0;
+      var o = 0;
+      for (var i = 0; i < a.length; i++) {
+        n += _estimateWordWidth(a[i]);
+        if (i > 0) {
+          var s = a[i - 1].charAt(a[i - 1].length - 1);
+          var l = a[i].charAt(0);
+          if (!_isCJK(s) && !_isCJK(l)) { o++; }
+        }
+      }
+      n += o * .5;
+      t.push(n);
+    }
+    return t;
+  }
+  function _computeResultDiamondScore(e) {
+    var t = e.split("\r");
+    if (t.length < 3) return 0;
+    var r = _getLineWidthsFromLines(t);
+    var a = Math.floor(t.length / 2);
+    var n = t.length % 2 === 0;
+    var o = n ? (r[a - 1] + r[a]) / 2 : r[a];
+    var i = (r[0] + r[t.length - 1]) / 2;
+    var s = o - i;
+    var l = 0;
+    for (var c = 0; c < Math.floor(t.length / 2); c++) {
+      var u = Math.abs(r[c] - r[t.length - 1 - c]);
+      l += u;
+    }
+    l = l / Math.max(1, Math.floor(t.length / 2));
+    var p = 0;
+    for (var c = 1; c <= a; c++) {
+      if (r[c] < r[c - 1]) p += r[c - 1] - r[c];
+    }
+    for (var c = a + 1; c < t.length; c++) {
+      if (r[c] > r[c - 1]) p += r[c] - r[c - 1];
+    }
+    return s - l * .3 - p * 2;
+  }
+
+  function _shapeCircular(e, t, r) {var a = e.length;if (a <= 2) return _joinWords(e);var n = [];var o = 0;for (var i = 0; i < e.length; i++) {n.push(_estimateWordWidth(e[i]));o += n[i];}var s;if (a <= 5) s = 2; else if (a <= 8) s = 3; else if (a <= 12) s = 4; else if (a <= 14) s = 5; else if (a <= 25) s = 6; else s = 7;var l;if (t && r && t > 0 && r > 0) {var c = Math.sqrt(o * r * .6 / t);l = Math.max(2, Math.min(10, Math.round(c)));var u = Math.max(2, Math.floor(a / 2));l = Math.min(l, u, s + 1);_logDebug("[SHAPE] numLines: table=" + s + "  raw=" + c.toFixed(2) + "  maxByWords=" + u + "  final=" + l);} else {l = s;_logDebug("[SHAPE] numLines: table=" + s + " (no dimensions)");}l = Math.max(2, l);if (l > a) l = a;var p = _makeDiamondTargets(l, o);var g = _optimalSplit(e, n, p, l);var h = g.split("\r");_logDebug("[SHAPE] Split(" + l + 'L): "' + g.replace(/\r/g, " | ") + '"');if (h.length >= 3) {var f = _splitTextToWords(h[0]);var d = _splitTextToWords(h[1]);var y = 0;for (var v = 0; v < f.length; v++) y += _estimateWordWidth(f[v]);var m = 0;for (var v = 0; v < d.length; v++) m += _estimateWordWidth(d[v]);var b = p[0];var T = p[Math.floor(p.length / 2)];var D = h.length >= 3 && b < T * .7;var x = false;if (!D) {x = f.length === 1 || f.length === 2 && y < m * .55;} else if (f.length === 1 && y < b * .35) {x = true;}if (x) {_logDebug("[WARN] Orphan first: " + f.length + " words  wFL=" + Math.round(y) + " wSL=" + Math.round(m) + " ratio=" + (y / m).toFixed(2));}if (x && d.length >= 3) {var S = f.concat([ d[0] ]);var I = d.slice(1);var k = 0;for (var v = 0; v < S.length; v++) k += _estimateWordWidth(S[v]);var _ = 0;for (var v = 0; v < I.length; v++) _ += _estimateWordWidth(I[v]);if (_ >= k * .85) {h[0] = _joinWords(S);h[1] = _joinWords(I);_logDebug('[SHAPE] Orphan first: word-move fixed  "' + h[0] + " | " + h[1] + '"');} else {var E = _shapeEqualLines(e, l);var j = E.split("\r");var L = _splitTextToWords(j[0]);if (L.length >= 2) {h = j;_logDebug("[SHAPE] Orphan first: equal-split fixed");} else {_logDebug("[WARN] Orphan first: could not fix");}}}}if (h.length >= 2) {var C = h.length - 1;var A = _splitTextToWords(h[C]);var w = _splitTextToWords(h[C - 1]);var M = 0;for (var v = 0; v < A.length; v++) M += _estimateWordWidth(A[v]);var R = 0;for (var v = 0; v < w.length; v++) R += _estimateWordWidth(w[v]);var O = p[p.length - 1];var P = p[Math.floor(p.length / 2)];var F = h.length >= 3 && O < P * .7;var N = false;if (!F) {N = A.length === 1 || A.length === 2 && M < R * .55;} else if (A.length === 1 && M < O * .35) {N = true;}if (N) {_logDebug("[WARN] Orphan last: " + A.length + " words  wLast=" + Math.round(M) + " wPrev=" + Math.round(R) + " ratio=" + (M / R).toFixed(2));}if (N && w.length >= 2 && h.length >= 3) {var B = false;if (w.length >= 3) {var W = w.slice(0, w.length - 1);var z = [ w[w.length - 1] ].concat(A);var U = 0;for (var v = 0; v < W.length; v++) U += _estimateWordWidth(W[v]);var G = 0;for (var v = 0; v < z.length; v++) G += _estimateWordWidth(z[v]);if (U >= G * .85) {h[C - 1] = _joinWords(W);h[C] = _joinWords(z);B = true;_logDebug("[SHAPE] Orphan last: word-move fixed  wP=" + Math.round(U) + " wL=" + Math.round(G) + '  "' + h[C - 1] + " | " + h[C] + '"');}}if (!B) {var V = _shapeEqualLines(e, l);var H = V.split("\r");var K = _splitTextToWords(H[H.length - 1]);var J = _splitTextToWords(H[0]);if (K.length >= 2 && J.length >= 2) {var Y = Math.floor((H.length - 1) / 2);var X = 0;var q = _splitTextToWords(H[Y]);for (var v = 0; v < q.length; v++) X += _estimateWordWidth(q[v]);var $ = 0;var Z = _splitTextToWords(H[0]);for (var v = 0; v < Z.length; v++) $ += _estimateWordWidth(Z[v]);var Q = _splitTextToWords(H[H.length - 1]);for (var v = 0; v < Q.length; v++) $ += _estimateWordWidth(Q[v]);var ee = X - $ / 2;var te = Math.floor((h.length - 1) / 2);var re = 0;var ae = _splitTextToWords(h[te]);for (var v = 0; v < ae.length; v++) re += _estimateWordWidth(ae[v]);var ne = 0;var oe = _splitTextToWords(h[0]);for (var v = 0; v < oe.length; v++) ne += _estimateWordWidth(oe[v]);var ie = _splitTextToWords(h[h.length - 1]);for (var v = 0; v < ie.length; v++) ne += _estimateWordWidth(ie[v]);var se = re - ne / 2;_logDebug("[SHAPE] Orphan last: diamond  orig=" + Math.round(se) + "  equal=" + Math.round(ee));if (ee > se) {_logDebug("[SHAPE] Orphan last: equal-split wins");h = H;} else {_logDebug("[SHAPE] Orphan last: kept original (better diamond)");}} else {_logDebug("[WARN] Orphan last: fallback N-1 lines (" + (l - 1) + "L)");var le = _shapeEqualLines(e, l - 1);return le;}}}}var ce = h.join("\r");_logDebug('[SHAPE] Final: "' + ce.replace(/\r/g, " | ") + '"');if (l > 2 && a > 4) {var ue = false;var pe = p[0];var ge = p[Math.floor(p.length / 2)];var he = pe < ge * .7;for (var fe = 0; fe < h.length; fe++) {if (_splitTextToWords(h[fe]).length === 1) {if (he && (fe === 0 || fe === h.length - 1)) continue;ue = true;break;}}if (ue) {var de = l - 1;if (de >= 2) {var ye = _makeDiamondTargets(de, o);var ve = _optimalSplit(e, n, ye, de);var me = ve.split("\r");var be = false;for (var Te = 0; Te < me.length; Te++) {if (_splitTextToWords(me[Te]).length === 1) {be = true;break;}}if (!be) {_logDebug("[SHAPE] SingleWordFix: " + l + "L had single-word line, using " + de + "L");h = me;ce = ve;l = de;} else {_logDebug("[WARN] SingleWordLine: " + l + "L has single-word line, " + de + "L also has one");}}}}if (l > 2 && a >= 6) {var De = _computeResultDiamondScore(ce);var xe = ce;var Se = l;var Ie = Math.max(3, l - 2);for (var ke = l - 1; ke >= Ie; ke--) {var _e = _makeDiamondTargets(ke, o);var Ee = _optimalSplit(e, n, _e, ke);var je = _computeResultDiamondScore(Ee);var Le = Ee.split("\r");var Ce = false;if (Le.length >= 3) {var Ae = _e[0];var we = _e[Math.floor(_e.length / 2)];var Me = Ae < we * .7;if (!Me) {if (_splitTextToWords(Le[0]).length === 1) Ce = true;if (_splitTextToWords(Le[Le.length - 1]).length === 1) Ce = true;}}var Re = _getLineWidthsFromLines(Le);var Oe = 0, Pe = 0;for (var v = 0; v < Re.length; v++) {if (Re[v] > Oe) Oe = Re[v];Pe += Re[v];}var Fe = Pe / Le.length;var Ne = Fe > 0 ? Oe / Fe : 1;_logDebug("[SHAPE] DiamondCheck: " + Se + "L score=" + De.toFixed(1) + "  " + ke + "L score=" + je.toFixed(1) + "  orphan=" + Ce + "  spread=" + Ne.toFixed(2));if (Ne > 1.5) {_logDebug("[SHAPE] DiamondCheck: skip " + ke + "L (spread too high, font would shrink)");continue;}if (!Ce && je > De) {De = je;xe = Ee;Se = ke;}}if (Se !== l) {_logDebug("[SHAPE] DiamondFix: using " + Se + "L (score=" + De.toFixed(1) + ")");ce = xe;h = xe.split("\r");l = Se;}}return ce;}
+  function _shapeTextForBubble(e, t, r, a) {e = e.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");var n = _splitTextToWords(e);var o = t.height > 0 ? t.width / t.height : 1;_logDebug("=== SHAPE " + Math.round(t.width) + "x" + Math.round(t.height) + " AR=" + o.toFixed(2) + " ===");_logDebug("[SEL] Bubble: " + Math.round(t.width) + "x" + Math.round(t.height) + "px  AR: " + o.toFixed(2) + "  Center: (" + Math.round(t.xMid) + "," + Math.round(t.yMid) + ")  TextArea: " + Math.round(r) + "x" + Math.round(a));_logDebug("[SHAPE] Text: " + n.length + " words  " + e.length + ' chars  "' + (e.length > 100 ? e.slice(0, 100) + "..." : e) + '"');if (n.length <= 2) {_logDebug("[SHAPE] Skip: <=2 words, no shaping needed");return e;}var i = o > 2;var s = o < .5;if (n.length === 3 && !i) {var l = _estimateWordWidth(n[0]);var c = _estimateWordWidth(n[1]);var u = _estimateWordWidth(n[2]);var p = l + c + u;var g = Math.max(l, c, u);var h = l === g ? 0 : c === g ? 1 : 2;_logDebug("[SHAPE] 3-word: w0=" + l.toFixed(1) + " w1=" + c.toFixed(1) + " w2=" + u.toFixed(1) + " longest=" + h + " AR=" + o.toFixed(2));if (s) {_logDebug("[SHAPE] 3-word tall: 3 lines");return _padLineBreaks(n.join("\r"));}if (h === 1 && g / (p / 3) > 1.15) {_logDebug("[SHAPE] 3-word: middle longest + prominent, 3 lines diamond");return _padLineBreaks(n.join("\r"));}var f = h === 0 ? c + u + .5 : l + c + .5;if (f / g >= .5) {if (h === 0) {_logDebug("[SHAPE] 3-word: first longest, merge 2+3");return _padLineBreaks(n[0] + "\r" + _joinWords([ n[1], n[2] ]));} else {_logDebug("[SHAPE] 3-word: last longest, merge 1+2");return _padLineBreaks(_joinWords([ n[0], n[1] ]) + "\r" + n[2]);}}_logDebug("[SHAPE] 3-word: similar widths, 2 lines");return _padLineBreaks(_joinWords([ n[0], n[1] ]) + "\r" + n[2]);}var d = i ? "WIDE (AR>2.0)" : s ? "TALL (AR<0.5)" : "CIRCULAR";_logDebug("[SHAPE] Mode: " + d);if (i) {var y = _shapeWide(n);_logDebug('[SHAPE] Result: "' + y.replace(/\r/g, " | ") + '"');return _padLineBreaks(y);} else if (s) {var y = _shapeTall(n);_logDebug('[SHAPE] Result: "' + y.replace(/\r/g, " | ") + '"');return _padLineBreaks(y);} else {return _padLineBreaks(_shapeCircular(n, r, a));}}
+  function _applyAutoFitToLayer(e, t, r, a, n, o) {var i = t || 13;var s = e.width / e.height;var l = Math.min(s, 1 / s);var c = l > .75;var u, p, g, h;if (c) {var f = e.width / 1.414;var d = e.height / 1.414;var y = i * .15;u = f * (1 - y / 100);p = d * (1 - y / 100);g = (e.width - u) / 2;h = (e.height - p) / 2;} else {var v = i - 4 + 4 * l;g = e.width * (v / 100);h = e.height * (v / 100);var m = .2;if (g > e.width * m) g = e.width * m;if (h > e.height * m) h = e.height * m;u = e.width - g * 2;p = e.height - h * 2;}_logDebug("=== FIT " + Math.round(e.width) + "x" + Math.round(e.height) + " AR=" + s.toFixed(2) + " ===");_logDebug("[SEL] Bubble: " + Math.round(e.width) + "x" + Math.round(e.height) + "px  AR: " + s.toFixed(2) + "  circ=" + l.toFixed(2) + (c ? " ROUND" : " WIDE") + "  Center: (" + Math.round(e.xMid) + "," + Math.round(e.yMid) + ")");_logDebug("[FIT] hPad=" + Math.round(g) + "px vPad=" + Math.round(h) + "px  -> TextArea: " + Math.round(u) + "x" + Math.round(p) + "px");_logDebug("[FIT] Mode: autoShape=" + n + "  autoFit=" + o);if (u <= 0 || p <= 0) return;var b;try {b = jamText.getLayerText();} catch (e) {return;}if (!b || !b.layerText || !b.layerText.textStyleRange) return;if (o) {b.layerText.antiAlias = "antiAliasStrong";}if (n && b.layerText.textKey) {var T = b.layerText.textKey;var D = _shapeTextForBubble(T, e, u, p);if (D !== T) {b.layerText.textKey = D;var x = D.length;if (b.layerText.textStyleRange) {for (var S = 0; S < b.layerText.textStyleRange.length; S++) {b.layerText.textStyleRange[S].from = 0;b.layerText.textStyleRange[S].to = x;}}if (b.layerText.paragraphStyleRange) {var I = b.layerText.paragraphStyleRange[0].paragraphStyle || {};I.hyphenate = false;b.layerText.paragraphStyleRange = [ {"from": 0,"to": x,"paragraphStyle": I} ];}}}if (b.layerText.paragraphStyleRange) {for (var k = 0; k < b.layerText.paragraphStyleRange.length; k++) {if (b.layerText.paragraphStyleRange[k].paragraphStyle) {b.layerText.paragraphStyleRange[k].paragraphStyle.hyphenate = false;}}}var _ = b.layerText.textStyleRange;var E = _[0].textStyle.size || 20;var j = _[0].textStyle.leading || E * 1.2;var L = j / E;_logDebug("[FIT] InitFont: " + E.toFixed(1) + "pt  leading=" + j.toFixed(1) + "pt  ratio=" + L.toFixed(2) + "  chars=" + (b.layerText.textKey || "").replace(/[\r\n]/g, "").length);var C = _convertPixelToPoint(u * 5);var A = _convertPixelToPoint(p * 10);b.layerText.textShape = [ {"textType": "box","orientation": "horizontal","bounds": {"top": 0,"left": 0,"right": C,"bottom": A}} ];var w = b.layerText.textKey || "";if (o) {var M = w.replace(/\r/g, " ").split(/\s+/);var R = "";for (var O = 0; O < M.length; O++) {if (M[O].length > R.length) R = M[O];}var P = 6, F = 120, N = P;while (F - P > .5) {var B = (P + F) / 2;for (var S = 0; S < _.length; S++) {_[S].textStyle.size = B;_[S].textStyle.leading = B * L;_[S].textStyle.horizontalScale = 100;}try {jamText.setLayerText(b);} catch (e) {break;}var W = _getCurrentTextLayerBounds();if (!W || W.width <= 0) {F = B;continue;}if (W.width <= u && W.height <= p) {N = B;P = B;} else {F = B;}}N = Math.max(Math.floor(N * 10) / 10, 6);_logDebug("[FIT] BinarySearch: result=" + N.toFixed(1) + "pt");var z = (w.match(/\r/g) || []).length + 1;if (n && z >= 4 && M.length >= 6) {var U = w.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");var G = _splitTextToWords(U);if (G.length >= 4) {var V = z - 1;var H = [];var K = 0;for (var J = 0; J < G.length; J++) {H.push(_estimateWordWidth(G[J]));K += H[J];}var Y = _makeDiamondTargets(V, K);var X = _optimalSplit(G, H, Y, V);var q = X.split("\r");var $ = false;for (var Z = 0; Z < q.length; Z++) {var Q = _splitTextToWords(q[Z]);if (Q.length === 1 && Q[0].length <= 2 && !_isCJK(Q[0].charAt(0))) {$ = true;break;}}if (!$) {var ee = X;var te = ee.length;b.layerText.textKey = ee;for (var S = 0; S < _.length; S++) {b.layerText.textStyleRange[S].from = 0;b.layerText.textStyleRange[S].to = te;}if (b.layerText.paragraphStyleRange) {for (var S = 0; S < b.layerText.paragraphStyleRange.length; S++) {b.layerText.paragraphStyleRange[S].from = 0;b.layerText.paragraphStyleRange[S].to = te;}}var re = 6, ae = 120, ne = re;while (ae - re > .5) {var oe = (re + ae) / 2;for (var S = 0; S < _.length; S++) {_[S].textStyle.size = oe;_[S].textStyle.leading = oe * L;_[S].textStyle.horizontalScale = 100;}try {jamText.setLayerText(b);} catch (e) {break;}var ie = _getCurrentTextLayerBounds();if (!ie || ie.width <= 0) {ae = oe;continue;}if (ie.width <= u && ie.height <= p) {ne = oe;re = oe;} else {ae = oe;}}ne = Math.max(Math.floor(ne * 10) / 10, 6);var se = (ne - N) / N;_logDebug("[FIT] PostOpt: " + z + "L=" + N.toFixed(1) + "pt  " + V + "L=" + ne.toFixed(1) + "pt  gain=" + (se * 100).toFixed(1) + "%");if (se >= .1) {N = ne;w = ee;_logDebug("[FIT] PostOpt: using " + V + "L (+" + (se * 100).toFixed(1) + "% font)");} else {b.layerText.textKey = w;for (var S = 0; S < _.length; S++) {b.layerText.textStyleRange[S].from = 0;b.layerText.textStyleRange[S].to = w.length;}if (b.layerText.paragraphStyleRange) {for (var S = 0; S < b.layerText.paragraphStyleRange.length; S++) {b.layerText.paragraphStyleRange[S].from = 0;b.layerText.paragraphStyleRange[S].to = w.length;}}}}}}if (R.length > 0) {var le = _clone(b);le.layerText.textKey = R;if (le.layerText.textStyleRange) {for (var S = 0; S < le.layerText.textStyleRange.length; S++) {le.layerText.textStyleRange[S].from = 0;le.layerText.textStyleRange[S].to = R.length;le.layerText.textStyleRange[S].textStyle.size = N;le.layerText.textStyleRange[S].textStyle.leading = N * L;le.layerText.textStyleRange[S].textStyle.horizontalScale = 100;}}if (le.layerText.paragraphStyleRange) {for (var S = 0; S < le.layerText.paragraphStyleRange.length; S++) {le.layerText.paragraphStyleRange[S].from = 0;le.layerText.paragraphStyleRange[S].to = R.length;}}try {jamText.setLayerText(le);var ce = _getCurrentTextLayerBounds();if (ce && ce.width > u) {var ue = u / ce.width;N = Math.max(N * ue * .95, 6);}} catch (e) {_logDebug("error: " + e);}}for (var S = 0; S < _.length; S++) {_[S].textStyle.size = N;_[S].textStyle.leading = N * L;_[S].textStyle.horizontalScale = 100;}b.layerText.textKey = w;if (b.layerText.textStyleRange) {for (var S = 0; S < b.layerText.textStyleRange.length; S++) {b.layerText.textStyleRange[S].to = w.length;}}if (b.layerText.paragraphStyleRange) {for (var S = 0; S < b.layerText.paragraphStyleRange.length; S++) {b.layerText.paragraphStyleRange[S].to = w.length;}}var pe = 100;if (r && a && a < 100) {var ge = b.layerText.textKey || "";if (ge.length > 1) {var he = Math.min(N * 1.2, 120);if (he > N + .5) {var fe = a;var de = 100;var ye = -1;while (de - fe > 1) {var ve = Math.floor((fe + de) / 2);for (var S = 0; S < _.length; S++) {_[S].textStyle.size = he;_[S].textStyle.leading = he * L;_[S].textStyle.horizontalScale = ve;}try {jamText.setLayerText(b);} catch (e) {break;}var me = _getCurrentTextLayerBounds();if (me && me.width <= u && me.height <= p) {ye = ve;fe = ve;} else {de = ve;}}if (ye >= a) {N = he;pe = ye;_logDebug("[FIT] Scaling: " + ye + "% at " + he.toFixed(1) + "pt (min=" + a + "%)  +" + (he - N).toFixed(1) + "pt gain");} else {_logDebug("[WARN] Scaling: no improvement found (scBest=" + ye + "%)");}}}}_logDebug("[FIT] Result: " + N.toFixed(1) + "pt  scale=" + pe + "%  (was " + E.toFixed(1) + "pt  d=" + (N - E).toFixed(1) + "pt)");for (var S = 0; S < _.length; S++) {_[S].textStyle.size = N;_[S].textStyle.leading = N * L;_[S].textStyle.horizontalScale = pe;}b.layerText.textShape[0].bounds.right = C;b.layerText.textShape[0].bounds.bottom = A;try {jamText.setLayerText(b);} catch (e) {_logDebug("error: " + e);}var be = _getCurrentTextLayerBounds();if (be) {var Te = Math.round(be.width / u * 100);var De = Math.round(be.height / p * 100);_logDebug("[FIT] Rendered: " + Math.round(be.width) + "x" + Math.round(be.height) + "px  vs target " + Math.round(u) + "x" + Math.round(p) + "px  (W:" + Te + "% H:" + De + "%)");}var xe = _convertPixelToPoint((be ? be.width : u) + 20);var Se = _convertPixelToPoint(p + 10);b.layerText.textShape[0].bounds.right = xe;b.layerText.textShape[0].bounds.bottom = Se;try {jamText.setLayerText(b);} catch (e) {_logDebug("error: " + e);}} else {for (var S = 0; S < _.length; S++) {_[S].textStyle.size = E;_[S].textStyle.leading = j;_[S].textStyle.horizontalScale = 100;}b.layerText.textKey = w;if (b.layerText.textStyleRange) {for (var S = 0; S < b.layerText.textStyleRange.length; S++) {b.layerText.textStyleRange[S].to = w.length;}}if (b.layerText.paragraphStyleRange) {for (var S = 0; S < b.layerText.paragraphStyleRange.length; S++) {b.layerText.paragraphStyleRange[S].to = w.length;}}b.layerText.textShape[0].bounds.right = C;b.layerText.textShape[0].bounds.bottom = A;try {jamText.setLayerText(b);} catch (e) {_logDebug("error: " + e);}var be = _getCurrentTextLayerBounds();var xe = _convertPixelToPoint((be ? be.width : u) + 20);var Se = _convertPixelToPoint((be ? be.height : p) + 10);b.layerText.textShape[0].bounds.right = xe;b.layerText.textShape[0].bounds.bottom = Se;try {jamText.setLayerText(b);} catch (e) {_logDebug("error: " + e);}}var Ie = _getCurrentTextLayerBounds();if (Ie) {var ke = e.xMid - Ie.xMid;var _e = e.yMid - Ie.yMid;_moveLayer(ke, _e);_logDebug("[FIT] Final: " + Math.round(Ie.width) + "x" + Math.round(Ie.height) + "px in bubble " + Math.round(e.width) + "x" + Math.round(e.height) + "px  offset=(" + Math.round(ke) + "," + Math.round(_e) + ")");}_logDebug("=== END ===");}
+
   function _alignTextLayerToSelection() {
     var e = _hostState.alignTextLayerToSelection;
     if (!documents.length) {
@@ -12789,20 +12941,32 @@ function copyFX() {
       }
     }
     var r = _textLayerIsPointText();
-    var n = _getCurrentTextLayerBounds();
+    var n = _getRasterizedTextLayerBounds();
     if (e.resize && !r) {
       var i = _calculateSelectionDimensions(a, e.padding);
       _setTextBoxSize(i.width, i.height);
       var o = _getCurrentTextLayerBounds();
       _resizeTextBoxToContent(i.width, o);
-      n = _getCurrentTextLayerBounds();
+      n = _getRasterizedTextLayerBounds();
     }
     _deselect();
     _positionLayerWithinSelection(a, n);
+    // Auto Shape / Auto Fit (TypeR - darkmax159159357 fork, gốc Arcanos AL3mla8, MIT License) —
+    // dùng chung ĐÚNG vùng bóng thoại "a" đã Magic Wand + cắt đuôi ở trên, không dò lại lần nữa.
+    var autoFitErrMsg = "";
+    if (e.autoShape || e.autoFit) {
+      try {
+        _applyAutoFitToLayer(a, e.autoFitPadding, false, 85, !!e.autoShape, !!e.autoFit);
+      } catch (autoFitErr) {
+        autoFitErrMsg = String(autoFitErr.message || autoFitErr);
+      }
+    }
     if (r) {
       _changeToPointText();
     }
-    e.result = "";
+    // Không im lặng nuốt lỗi nữa — nếu Auto Shape/Fit gặp lỗi, gắn vào kết quả để client hiện ra
+    // rõ ràng, thay vì trông như "chạy xong không làm gì cả".
+    e.result = autoFitErrMsg ? "autoFitError:" + autoFitErrMsg : "";
   }
 
   function _changeActiveLayerTextSize() {
@@ -13022,6 +13186,9 @@ function copyFX() {
     var t = _hostState.alignTextLayerToSelection;
     t.resize = !!e.resizeTextBox;
     t.padding = e.padding || 0;
+    t.autoShape = !!e.autoShape;
+    t.autoFit = !!e.autoFit;
+    t.autoFitPadding = (typeof e.autoFitPadding === "number" && !isNaN(e.autoFitPadding)) ? e.autoFitPadding : 10;
     t.result = "";
     app.activeDocument.suspendHistory("TyperTools Align", "_alignTextLayerToSelection()");
     return t.result;
@@ -13190,11 +13357,48 @@ function copyFX() {
 
 
   // ========== TR_BRIDGE: cầu nối vào engine TypeR đã bọc phía trên ==========
-  $.global.TR_alignTextLayerToSelection = function() {
+  // Dùng chung cho cả engine TyperTool (TT_pasteToSelection/TT_pasteToLayer) lẫn Multiple Bubble,
+  // vì _setLayerStroke chỉ tồn tại trong khối TypeR — expose ra global để gọi được từ nơi khác.
+  $.global.TR_setLayerStroke = function(stroke) {
+    try {
+      if (!stroke || !stroke.enabled) return "OK";
+      _setLayerStroke(stroke);
+      return "OK";
+    } catch (e) {
+      return "ERROR:" + e.message;
+    }
+  };
+  // 3 bridge nhỏ dùng cho resizeBox() (Quick Layout) — tận dụng lại đúng API Action Manager
+  // (jamText/_getCurrentTextLayerBounds/_moveLayer) đã có sẵn trong khối này, thay cho API DOM
+  // (layer.bounds/textItem.width...) chậm hơn mà bản resizeBox() cũ đang dùng.
+  $.global.TR_getCurrentTextLayerBounds = function() {
+    try { return jamJSON.stringify(_getCurrentTextLayerBounds()); }
+    catch (e) { return jamJSON.stringify({ error: e.message }); }
+  };
+  $.global.TR_setTextBoxSizePx = function(widthPx, heightPx) {
+    try {
+      var b = jamText.getLayerText();
+      if (!b || !b.layerText) return "ERROR:no_text";
+      var wPt = _convertPixelToPoint(widthPx);
+      var hPt = _convertPixelToPoint(heightPx);
+      b.layerText.textShape = [{ "textType": "box", "orientation": "horizontal",
+        "bounds": { "top": 0, "left": 0, "right": wPt, "bottom": hPt } }];
+      jamText.setLayerText(b);
+      return "OK";
+    } catch (e) { return "ERROR:" + e.message; }
+  };
+  $.global.TR_moveLayerPx = function(dx, dy) {
+    try { _moveLayer(dx, dy); return "OK"; }
+    catch (e) { return "ERROR:" + e.message; }
+  };
+  $.global.TR_alignTextLayerToSelection = function(autoShape, autoFit, autoFitPadding) {
     try {
       var res = alignTextLayerToSelection({
         resizeTextBox: false,
-        padding: 0
+        padding: 0,
+        autoShape: !!autoShape,
+        autoFit: !!autoFit,
+        autoFitPadding: autoFitPadding
       });
       return res; // "" (OK) | "doc" | "layer" | "noSelection" | "smallSelection"
     } catch (e) {

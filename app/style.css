@@ -193,7 +193,7 @@ button.flash-err {
 .tt-styles-toolbar {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 4px;
     margin-bottom: 4px;
 }
 .tt-styles-toolbar-title {
@@ -302,6 +302,7 @@ button.flash-err {
     height: 90px;
     overflow-y: auto;
     overflow-x: hidden;
+    overscroll-behavior: contain;
 }
 
 .tt-text-resize-handle {
@@ -321,12 +322,13 @@ button.flash-err {
 .tt-text-block::-webkit-scrollbar-thumb:hover { background: #555; }
 .tt-text-block::-webkit-scrollbar-corner { background: #1a1a1a; }
 
-/* ---- Vùng cuộn của cả section TypeBox (text-block + styles) — đồng bộ .fx-scroll/.fx-resize-handle ---- */
+/* ---- Vùng cuộn của cả section Typer Box (text-block + styles) — đồng bộ .fx-scroll/.fx-resize-handle ---- */
 .tt-texter-scroll {
     overflow-y: auto;
     height: 220px;
     padding-bottom: 2px;
-    padding-right: 8px;
+    padding-right: 2px;
+    overscroll-behavior: contain;
 }
 .tt-texter-scroll::-webkit-scrollbar { width: 7px; height: 7px; background: #1a1a1a; }
 .tt-texter-scroll::-webkit-scrollbar-track { background: #2b2b2b; }
@@ -502,10 +504,10 @@ button.flash-err {
 
 .tt-folder-add-btn {
     flex: 0 0 auto;
-    min-width: 42px;
-    height: 20px;
-    padding: 0 10px;
-    font-size: 12px;
+    min-width: 24px;
+    height: 18px;
+    padding: 0 4px;
+    font-size: 10px;
     line-height: 1;
     border-radius: 3px;
     display: flex;
@@ -573,6 +575,7 @@ button.flash-err {
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 12px;
+    cursor: grab;
 }
 
 .tt-style-actions {
@@ -636,10 +639,36 @@ button.flash-err {
     height: 20px;
     padding: 0;
     font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .tt-style-edit-body {
     padding: 10px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.tt-style-toggle-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+.tt-style-toggle-btn {
+    flex: 1;
+    height: 26px;
+    font-size: 12px;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.tt-style-toggle-btn svg { display: block; }
+.tt-style-toggle-btn.m-active {
+    background: #288edf;
+    border-color: #134f7f;
+    color: #fff;
 }
 
 .tt-style-edit-row {
@@ -706,6 +735,20 @@ button.flash-err {
     color: #999;
     margin-bottom: 3px;
 }
+.tt-icon-label {
+    display: flex !important;
+    align-items: center;
+    gap: 3px;
+}
+.tt-icon-label svg { flex-shrink: 0; opacity: 0.8; }
+
+.tt-style-edit-copybtn, .tt-style-edit-footer button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+.tt-style-edit-copybtn svg, .tt-style-edit-footer button svg { flex-shrink: 0; }
 .tt-style-edit-row2 input {
     width: 100%;
     box-sizing: border-box;
@@ -718,10 +761,92 @@ button.flash-err {
     font-size: 11px;
 }
 
+/* Ẩn 2 mũi tên tăng/giảm mặc định của ô số — che mất số hiển thị, để người dùng tự gõ số. */
+#styleEditOverlay input[type=number]::-webkit-outer-spin-button,
+#styleEditOverlay input[type=number]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+#styleEditOverlay input[type=number] {
+    -moz-appearance: textfield;
+}
+
+/* Icon-cạnh-ô kiểu Figma: icon đứng bên trái, đơn vị (pt/%) nằm CHUNG trong khung với ô nhập,
+   không tách label chữ ra phía trên như các field kiểu cũ (Auto leading %, Stroke...). */
+.tt-style-edit-row2 .tt-field-row {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+.tt-field-icon {
+    flex: 0 0 auto;
+    width: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+}
+.tt-numfield {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 3px;
+    height: 26px;
+    min-width: 0;
+    box-sizing: border-box;
+}
+.tt-style-edit-row2 .tt-numfield input {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+    height: 100%;
+    background: transparent;
+    border: none;
+    color: #ddd;
+    font-size: 11px;
+    padding: 0 0 0 6px;
+    box-sizing: border-box;
+}
+.tt-unit {
+    flex: 0 0 auto;
+    font-size: 9px;
+    color: #888;
+    padding-right: 6px;
+    white-space: nowrap;
+}
+.tt-field-row select {
+    flex: 1;
+    height: 26px;
+    background: #1a1a1a;
+    color: #ddd;
+    border: 1px solid #444;
+    border-radius: 3px;
+    padding: 0 4px;
+    font-size: 11px;
+    min-width: 0;
+}
+.tt-colorswatch {
+    flex: 1;
+    height: 26px;
+    padding: 2px;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 3px;
+    cursor: pointer;
+}
+.tt-colorswatch-lg {
+    flex: 0 0 44px;
+    height: 30px;
+}
+
 .tt-style-edit-align-row {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 3px;
     margin-bottom: 4px;
 }
 .tt-style-edit-align-row span {
@@ -733,15 +858,27 @@ button.flash-err {
     flex: 1;
     height: 24px;
     font-size: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
-.tt-align-btn-small.active {
+.tt-align-btn-small svg { display: block; }
+.tt-align-btn-small.active, .tt-align-btn-small.m-active {
     background: #288edf;
     color: #fff;
     border-color: #134f7f;
 }
+.tt-style-edit-vdivider {
+    width: 1px;
+    height: 16px;
+    background: #444;
+    flex: 0 0 auto;
+    margin: 0 2px;
+}
 
 .tt-style-edit-footer {
     display: flex;
+    justify-content: space-between;
     gap: 6px;
     padding: 8px 10px;
     background: #222;
@@ -750,13 +887,7 @@ button.flash-err {
     flex: 1;
     height: 28px;
 }
-.tt-style-edit-footer .tt-big-btn {
-    width: auto;
-    margin-right: 0;
-}
 .tt-style-edit-delete {
-    flex: 0 0 auto !important;
-    width: auto !important;
     color: #e08a8a;
     border-color: #5a3030;
     background: #3a2424;
@@ -830,6 +961,9 @@ button.flash-err {
 .mb-dot.mb-active {
     background: #3ecf5e;
     box-shadow: 0 0 4px 1px rgba(62,207,94,0.6);
+}
+#btnToggleAutoShape svg, #btnToggleAutoFit svg, #btnMultipleBubble svg, #btnAlignSimple svg, #settingBtn svg {
+    vertical-align: middle;
 }
 
 .mb-info-bar {
@@ -983,6 +1117,7 @@ button.flash-err {
     overflow-y: auto;
     flex: 1;
     margin-bottom: 8px;
+    overscroll-behavior: contain;
 }
 
 .preview-item {
@@ -1098,7 +1233,7 @@ button.flash-err {
     width: 100%;
     z-index: 200;
     background: #383838;
-    border: 1px solid #555;
+    border: 1px solid #888;
     border-radius: 4px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     max-height: 260px;
@@ -1175,6 +1310,23 @@ button.flash-err {
     cursor: pointer;
     padding: 2px 6px;
     font-size: 14px;
+}
+
+.font-item .font-select {
+    flex: 1;
+    min-width: 0;
+    background: #222;
+    border: 1px solid #555;
+    color: #eee;
+    font-size: 11px;
+    padding: 2px 4px;
+    border-radius: 2px;
+    margin: 0 6px;
+}
+.font-item.selected .font-select {
+    background: #1a5f9c;
+    border-color: #134f7f;
+    color: #fff;
 }
 
 .font-item .font-name input {
@@ -1546,6 +1698,7 @@ button.flash-err {
     flex: 1 1 auto;
     min-height: 0;
     padding-bottom: 5px;
+    overscroll-behavior: contain;
 }
 
 .fx-resize-handle {
@@ -2147,6 +2300,27 @@ body::-webkit-scrollbar-thumb:hover,
     justify-self: end;
 }
 
+/* 2 nút đổi dòng dùng chung đúng ô lưới với Load (chỉ 1 trong 2 hiện tại 1 thời điểm) —
+   khớp chiều ngang với nút Horizontal/Vertical cho cân đối 2 bên. */
+#btnPreviewLoad, #btnQLLineNavGroup {
+    grid-column: 1;
+    justify-self: start;
+}
+#btnPreviewToggle { grid-column: 2; }
+#btnPreviewMode { grid-column: 3; }
+#btnQLLineNavGroup {
+    display: flex;
+    gap: 2px;
+    width: 56px;
+}
+#btnQLLineNavGroup button {
+    flex: 1;
+    width: auto !important;
+    height: 20px !important;
+    font-size: 10px !important;
+    padding: 0 !important;
+}
+
 /* Ensure button sizes for preview header */
 .preview-header button {
     width: 36px;
@@ -2305,4 +2479,54 @@ body::-webkit-scrollbar-thumb:hover,
 #section-preview:hover {
     border-color: #6a6a6a !important;
     transition: border-color 0.2s ease;
+}
+/* ============================================================
+   EDIT SHORTCUTS
+   ============================================================ */
+.tt-shortcut-warning {
+    font-size: 10px;
+    color: #e0a030;
+    margin: 0 0 10px;
+    line-height: 1.4;
+}
+.tt-shortcut-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.tt-shortcut-label {
+    font-size: 12px;
+    color: #ccc;
+}
+.tt-shortcut-locked .tt-shortcut-label {
+    color: #888;
+}
+.tt-shortcut-key {
+    font-size: 11px;
+    color: #888;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 3px;
+    padding: 3px 8px;
+}
+.tt-shortcut-key-btn {
+    font-size: 11px;
+    background: #1a1a1a;
+    border: 1px solid #555;
+    border-radius: 3px;
+    padding: 3px 8px;
+    color: #eee;
+    cursor: pointer;
+    min-width: 90px;
+}
+.tt-shortcut-key-btn:hover {
+    background: #2a2a2a;
+    border-color: #288edf;
+}
+.tt-shortcut-key-btn.listening {
+    background: #288edf;
+    border-color: #134f7f;
+    color: #fff;
 }

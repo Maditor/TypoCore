@@ -70,7 +70,7 @@ function getCasePreview(text, n) {
     return lines.join("\n");
 }
 // Danh sách các kiểu cách dòng (đã lọc trùng) cho 1 đoạn text — dùng chung cho lưới Quick Layout
-// VÀ cho phím tắt Win+Ctrl khi bật "Link Quick Layout to TypeBox" (luôn lấy items[0] = kiểu ĐẦU TIÊN).
+// VÀ cho phím tắt Win+Ctrl khi bật "Link Quick Layout to Typer Box" (luôn lấy items[0] = kiểu ĐẦU TIÊN).
 function buildCasePreviewItems(text) {
     var caseNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
     var seen = {};
@@ -123,11 +123,8 @@ function runBtn(expr, el) { _exec(expr, el); }
 
 var BAD = { "ERROR":1, "NO_LAYER":1, "NO_FX":1, "NO_PATH":1, "NO_FILE":1, "NO_DOC":1, "NO_TEXT":1, "NO_OTHER_DOC":1, "NO_STYLE":1 };
 function flash(btn, result) {
-    if (!btn) return;
-    var bad = !result || BAD[result] || (result+"").includes("ERROR") || (result+"").indexOf("ERR:") === 0;
-    btn.classList.remove("flash-ok", "flash-err");
-    btn.classList.add(bad ? "flash-err" : "flash-ok");
-    setTimeout(function() { btn.classList.remove("flash-ok", "flash-err"); }, 500);
+    // Không hiện nháy xanh/đỏ báo thành công/thất bại nữa theo yêu cầu — giữ lại hàm rỗng để các
+    // chỗ đang gọi flash(...) khắp nơi trong code không cần sửa lại từng cái, không bị lỗi.
 }
 
 function doCopyFX() {
@@ -160,6 +157,17 @@ function loadTextPresets() {
         if (raw) {
             var data = JSON.parse(raw);
             if (!data.folders) data.folders = {}; // tương thích dữ liệu cũ chưa có folder
+            // Tương thích dữ liệu cũ chưa có sortIndex (kéo-thả đổi thứ tự) — gán theo đúng thứ tự
+            // key hiện tại (insertion order) để không bị xáo trộn khi lần đầu mở lại sau cập nhật.
+            var needMigrate = false;
+            var ids = Object.keys(data.presets);
+            for (var i = 0; i < ids.length; i++) {
+                if (typeof data.presets[ids[i]].sortIndex !== "number") { needMigrate = true; break; }
+            }
+            if (needMigrate) {
+                ids.forEach(function(id, i) { data.presets[id].sortIndex = i; });
+                saveTextPresets(data);
+            }
             return data;
         }
     } catch (e) {}
@@ -207,6 +215,11 @@ function renderStyleList() {
         var fid = data.presets[id].folder;
         if (fid && groups[fid]) groups[fid].push(id);
         else groups[UNSORTED_KEY].push(id);
+    });
+    Object.keys(groups).forEach(function(fid) {
+        groups[fid].sort(function(a, b) {
+            return (data.presets[a].sortIndex || 0) - (data.presets[b].sortIndex || 0);
+        });
     });
 
     if (!Object.keys(data.presets).length) {
@@ -282,6 +295,23 @@ function renderFolderBlock(container, folderKey, folderName, presetIds, data, is
         emptyMsg.textContent = "(empty)";
         list.appendChild(emptyMsg);
     }
+    // Kéo-thả đổi thứ tự style trong CÙNG 1 folder (giống TypeR) — dùng chung thư viện Sortable.js
+    // đã có sẵn cho "Panel Setup". Kéo xong lưu lại sortIndex mới theo đúng thứ tự DOM hiện tại.
+    if (presetIds.length > 1 && typeof Sortable !== "undefined") {
+        new Sortable(list, {
+            animation: 150,
+            handle: ".tt-style-name",
+            onEnd: function() {
+                var d2 = loadTextPresets();
+                var rows = list.querySelectorAll(".tt-style-item");
+                for (var i = 0; i < rows.length; i++) {
+                    var pid = rows[i].getAttribute("data-preset-id");
+                    if (d2.presets[pid]) d2.presets[pid].sortIndex = i;
+                }
+                saveTextPresets(d2);
+            }
+        });
+    }
 
     item.appendChild(header);
     item.appendChild(list);
@@ -309,6 +339,7 @@ function buildStyleItemEl(id, data) {
     var p = data.presets[id];
     var row = document.createElement("div");
     row.className = "tt-style-item" + (data.defaultId === id ? " m-current" : "");
+    row.setAttribute("data-preset-id", id);
 
     var dot = document.createElement("span");
     dot.className = "tt-style-dot";
@@ -348,6 +379,12 @@ function selectStylePreset(id) {
     data.defaultId = id;
     saveTextPresets(data);
     renderStyleList();
+    // Đổi style hiện hành -> nếu đang Link Quick Layout to Typer Box và popup đang mở, ép render lại
+    // preview ngay để lấy đúng font mới (chữ không đổi nên updatePreviewIfNeeded thường sẽ bỏ qua).
+    if (isLinkQLTexter() && typeof window.forceRefreshPreview === "function") {
+        var overlay = document.getElementById("previewOverlay");
+        if (overlay && overlay.style.display === "block") window.forceRefreshPreview();
+    }
 }
 function editStylePreset(id) {
     openStyleEditor(id);
@@ -458,6 +495,7 @@ function proceedImport(raw, data) {
         var newId = "p" + Date.now() + "_" + importedCount;
         var preset = { name: s.name || "Untitled", style: { textProps: s.textProps } };
         if (s.folder && folderIdMap[s.folder]) preset.folder = folderIdMap[s.folder];
+        if (s.stroke) preset.stroke = s.stroke; // giữ lại stroke thật từ file import (nếu có)
         // Suy ra previewFont y hệt lúc lưu tay ở Edit Style, để style import cũng hiện đúng font.
         try {
             var ts = s.textProps.layerText.textStyleRange[0].textStyle;
@@ -521,7 +559,7 @@ function doExportStyles() {
             // Điền giá trị mặc định/vô hại (tắt/rỗng) để giữ đúng hình dạng dữ liệu gốc.
             prefixes: [],
             prefixColor: "#FFFFFF",
-            stroke: { enabled: false, size: 0, opacity: 100, position: "outer", color: { r: 255, g: 255, b: 255 } },
+            stroke: p.stroke || { enabled: false, size: 0, opacity: 100, position: "outer", color: { r: 255, g: 255, b: 255 } },
             id: id,
             edited: Date.now(),
             chosen: false,
@@ -553,27 +591,52 @@ function doExportStyles() {
 var _editingStyleId = null;   // null = đang tạo style mới
 var _editingBaseStyle = null; // style JSON đã capture (hoặc đang sửa)
 var _editingAlign = "left";
+var _editingToggles = { bold: false, italic: false, underline: false, strikethrough: false, fontCaps: "normal", hyphenate: false, hangingRoman: false, baseline: "normal" };
+var _editingStroke = { enabled: false, size: 0, opacity: 100, position: "outer", color: { r: 255, g: 255, b: 255 } };
 var _editingFolder = null;    // id folder đang chọn cho style này (null = Unsorted)
 var _userFontsCache = null;
 
+// Style mặc định để "New Style" cũng hiện đủ toàn bộ option ngay, không bắt buộc phải bấm
+// "Copy layer style" trước mới chỉnh được (giống hành vi thật của TypeR).
+function getDefaultBaseStyle() {
+    return {
+        textProps: {
+            layerText: {
+                textGridding: "none",
+                orientation: "horizontal",
+                antiAlias: "antiAliasSmooth",
+                textStyleRange: [{ from: 0, to: 100, textStyle: {
+                    fontPostScriptName: "Tahoma", fontName: "Tahoma", fontStyleName: "Regular",
+                    size: 14, horizontalScale: 100, verticalScale: 100, autoLeading: true,
+                    tracking: 0, baselineShift: 0, autoKern: "metricsKern", fontCaps: "normal",
+                    baseline: "normal", underline: "underlineOff", strikethrough: "strikethroughOff",
+                    syntheticBold: false, syntheticItalic: false,
+                    color: { red: 255, green: 255, blue: 255 }
+                }}],
+                paragraphStyleRange: [{ from: 0, to: 100, paragraphStyle: { alignment: "left", autoLeadingPercentage: 1.2, hyphenate: false, hangingRoman: false } }]
+            },
+            typeUnit: "pt"
+        }
+    };
+}
 function openStyleEditor(id) {
     _editingStyleId = id;
     _editingBaseStyle = null;
     _editingAlign = "left";
+    _editingToggles = { bold: false, italic: false, underline: false, strikethrough: false, fontCaps: "normal", hyphenate: false, hangingRoman: false, baseline: "normal" };
+    _editingStroke = { enabled: false, size: 0, opacity: 100, position: "outer", color: { r: 255, g: 255, b: 255 } };
     var data = loadTextPresets();
     var existing = id ? data.presets[id] : null;
     _editingFolder = existing ? (existing.folder || null) : null;
+    if (existing && existing.stroke) _editingStroke = JSON.parse(JSON.stringify(existing.stroke));
 
     document.getElementById("styleEditTitle").textContent = existing ? "Edit Style" : "New Style";
     document.getElementById("styleEditName").value = existing ? existing.name : "";
-    document.getElementById("styleEditFields").style.display = "none";
     document.getElementById("btnStyleEditDelete").style.display = existing ? "block" : "none";
     renderFolderOptionsInEditor();
 
-    if (existing) {
-        _editingBaseStyle = JSON.parse(JSON.stringify(existing.style)); // clone, không sửa preset gốc cho tới khi Lưu
-        populateStyleEditFields();
-    }
+    _editingBaseStyle = existing ? JSON.parse(JSON.stringify(existing.style)) : getDefaultBaseStyle();
+    populateStyleEditFields(); // luôn hiện đủ option ngay — "Copy layer style" chỉ là điền nhanh, không bắt buộc
     loadUserFontsIfNeeded();
     document.getElementById("styleEditOverlay").style.display = "flex";
 }
@@ -621,6 +684,45 @@ function loadUserFontsIfNeeded() {
         fillFontSelect(sel);
     });
 }
+// Dùng chung được ở bất kỳ đâu cần liệt kê font thật (không gắn riêng với Style Edit như
+// fillFontSelect() bên dưới) — Quick Layout Font List tái dùng lại đúng cache _userFontsCache này,
+// không gọi lại TT_getUserFonts() thêm lần nào, tránh trùng lặp/xung đột dữ liệu.
+// Mỗi slot lưu {postScriptName, previewName} — postScriptName để chọn đúng option trong dropdown,
+// previewName (tên hiển thị, qua deriveDisplayFontName giống hệt Style Edit) để áp vào CSS
+// font-family cho preview, vì postScriptName không phải lúc nào cũng trùng tên CSS nhận diện được.
+function fontSlotPostScriptName(entry) {
+    if (!entry) return "";
+    return (typeof entry === "object") ? (entry.postScriptName || "") : entry;
+}
+function fontSlotPreviewName(entry) {
+    if (!entry) return "";
+    return (typeof entry === "object") ? (entry.previewName || entry.postScriptName || "") : entry;
+}
+function ensureUserFontsLoaded(callback) {
+    if (_userFontsCache) { callback(); return; }
+    cs.evalScript('TT_getUserFonts()', function(res) {
+        try {
+            var data = JSON.parse(res);
+            _userFontsCache = (data && data.fonts) ? data.fonts : [];
+        } catch (e) { _userFontsCache = []; }
+        callback();
+    });
+}
+function fillFontSelectGeneric(sel, currentValue) {
+    if (!sel) return;
+    sel.innerHTML = "";
+    var blankOpt = document.createElement("option");
+    blankOpt.value = "";
+    blankOpt.textContent = "(choose font)";
+    sel.appendChild(blankOpt);
+    (_userFontsCache || []).forEach(function(f) {
+        var opt = document.createElement("option");
+        opt.value = f.postScriptName || f.name;
+        opt.textContent = f.name;
+        sel.appendChild(opt);
+    });
+    sel.value = currentValue || "";
+}
 function fillFontSelect(sel) {
     if (!sel || sel.dataset.filled === "1") { restoreFontSelectValue(); return; }
     sel.innerHTML = "";
@@ -651,7 +753,26 @@ function populateStyleEditFields() {
         var c = ts.color;
         document.getElementById("styleEditColor").value = c ? rgbToHex(c.red, c.green, c.blue) : "#ffffff";
         restoreFontSelectValue();
+        _editingToggles = {
+            bold: !!ts.syntheticBold,
+            italic: !!ts.syntheticItalic,
+            underline: !!(ts.underline && ts.underline !== "underlineOff"),
+            strikethrough: !!(ts.strikethrough && ts.strikethrough !== "strikethroughOff"),
+            fontCaps: ts.fontCaps || "normal",
+            baseline: ts.baseline || "normal",
+            hyphenate: false, hangingRoman: false // đọc riêng từ paragraphStyle ngay dưới
+        };
+        document.getElementById("styleEditTracking").value = ts.tracking || 0;
+        document.getElementById("styleEditBaseline").value = ts.baselineShift || 0;
+        document.getElementById("styleEditHScale").value = ts.horizontalScale !== undefined ? Math.round(ts.horizontalScale) : 100;
+        document.getElementById("styleEditVScale").value = ts.verticalScale !== undefined ? Math.round(ts.verticalScale) : 100;
+        document.getElementById("styleEditKerning").value = ts.autoKern || "metricsKern";
     } catch (e) {}
+    try {
+        document.getElementById("styleEditAntiAlias").value = _editingBaseStyle.textProps.layerText.antiAlias || "antiAliasSmooth";
+    } catch (e) {}
+    setToggleButtonsUI();
+    populateStrokeFieldsUI();
     var autoPct = 120;
     try {
         var pAuto = _editingBaseStyle.textProps.layerText.paragraphStyleRange[0].paragraphStyle.autoLeadingPercentage;
@@ -662,9 +783,37 @@ function populateStyleEditFields() {
     try {
         var ps = _editingBaseStyle.textProps.layerText.paragraphStyleRange[0].paragraphStyle;
         _editingAlign = ps.alignment || "left";
+        _editingToggles.hyphenate = !!ps.hyphenate;
+        _editingToggles.hangingRoman = !!ps.hangingRoman;
     } catch (e) { _editingAlign = "left"; }
     setAlignButtonsUI(_editingAlign);
     document.getElementById("styleEditFields").style.display = "block";
+}
+// Đồng bộ giao diện 6 nút toggle (Bold/Italic/Underline/Strike/AllCaps/SmallCaps) theo _editingToggles
+function setToggleButtonsUI() {
+    var map = {
+        styleToggleBold: _editingToggles.bold,
+        styleToggleItalic: _editingToggles.italic,
+        styleToggleUnderline: _editingToggles.underline,
+        styleToggleStrike: _editingToggles.strikethrough,
+        styleToggleAllCaps: _editingToggles.fontCaps === "allCaps",
+        styleToggleSmallCaps: _editingToggles.fontCaps === "smallCaps",
+        styleToggleSuper: _editingToggles.baseline === "superScript",
+        styleToggleSub: _editingToggles.baseline === "subScript"
+    };
+    Object.keys(map).forEach(function(id) {
+        var btn = document.getElementById(id);
+        if (btn) btn.classList.toggle("m-active", !!map[id]);
+    });
+}
+function populateStrokeFieldsUI() {
+    document.getElementById("styleEditStrokeEnabled").checked = !!_editingStroke.enabled;
+    document.getElementById("styleEditStrokeSize").value = _editingStroke.size;
+    // Opacity/Position không còn cho chỉnh trên UI nữa -> cố định 100% / outer
+    _editingStroke.opacity = 100;
+    _editingStroke.position = "outer";
+    var col = _editingStroke.color || { r: 255, g: 255, b: 255 };
+    document.getElementById("styleEditStrokeColor").value = rgbToHex(col.r, col.g, col.b);
 }
 // Chỉ hiện ô "Auto leading %" khi Leading đang để trống (đang ở chế độ auto) — giống TyperTool
 function updateAutoLeadingRowVisibility() {
@@ -677,6 +826,10 @@ function setAlignButtonsUI(align) {
         var btn = document.getElementById("styleEditAlign" + a);
         if (btn) btn.classList.toggle("active", a.toLowerCase() === align);
     });
+    var hyBtn = document.getElementById("styleToggleHyphenate");
+    if (hyBtn) hyBtn.classList.toggle("active", !!_editingToggles.hyphenate);
+    var hrBtn = document.getElementById("styleToggleHangingRoman");
+    if (hrBtn) hrBtn.classList.toggle("active", !!_editingToggles.hangingRoman);
 }
 function doStyleEditCopyFromLayer() {
     var btn = document.getElementById("btnStyleEditCopyFromLayer");
@@ -694,6 +847,12 @@ function hexToRgb(hex) {
     var m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || "");
     if (!m) return { red: 255, green: 255, blue: 255 };
     return { red: parseInt(m[1], 16), green: parseInt(m[2], 16), blue: parseInt(m[3], 16) };
+}
+// Stroke dùng field {r,g,b} (khác {red,green,blue} của màu chữ) — theo đúng format gốc của TypeR
+function hexToRgb2(hex) {
+    var m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || "");
+    if (!m) return { r: 255, g: 255, b: 255 };
+    return { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) };
 }
 // Ghi các field đang chỉnh vào bản style đã capture (chỉ ghi đè field liên quan, giữ nguyên phần khác)
 function applyStyleEditFieldsToBase() {
@@ -724,13 +883,33 @@ function applyStyleEditFieldsToBase() {
                 ts.fontPostScriptName = fontOpt.value;
                 ts.fontName = fontOpt.textContent;
             }
+            ts.syntheticBold = !!_editingToggles.bold;
+            ts.syntheticItalic = !!_editingToggles.italic;
+            ts.underline = _editingToggles.underline ? "underlineOnLeftInVertical" : "underlineOff";
+            ts.strikethrough = _editingToggles.strikethrough ? "xHeightStrikethroughOn" : "strikethroughOff";
+            ts.fontCaps = _editingToggles.fontCaps || "normal";
+            ts.baseline = _editingToggles.baseline || "normal";
+            var trackingVal = parseFloat(document.getElementById("styleEditTracking").value);
+            ts.tracking = isNaN(trackingVal) ? 0 : trackingVal;
+            var baselineVal = parseFloat(document.getElementById("styleEditBaseline").value);
+            ts.baselineShift = isNaN(baselineVal) ? 0 : baselineVal;
+            var hScaleVal = parseFloat(document.getElementById("styleEditHScale").value);
+            ts.horizontalScale = (!isNaN(hScaleVal) && hScaleVal > 0) ? hScaleVal : 100;
+            var vScaleVal = parseFloat(document.getElementById("styleEditVScale").value);
+            ts.verticalScale = (!isNaN(vScaleVal) && vScaleVal > 0) ? vScaleVal : 100;
+            ts.autoKern = document.getElementById("styleEditKerning").value || "metricsKern";
         }
+    } catch (e) {}
+    try {
+        _editingBaseStyle.textProps.layerText.antiAlias = document.getElementById("styleEditAntiAlias").value || "antiAliasSmooth";
     } catch (e) {}
     try {
         var pranges = _editingBaseStyle.textProps.layerText.paragraphStyleRange;
         for (var j = 0; j < pranges.length; j++) {
             if (!pranges[j].paragraphStyle) continue;
             pranges[j].paragraphStyle.alignment = _editingAlign;
+            pranges[j].paragraphStyle.hyphenate = !!_editingToggles.hyphenate;
+            pranges[j].paragraphStyle.hangingRoman = !!_editingToggles.hangingRoman;
             // Auto leading % chỉ có ý nghĩa khi đang auto (không nhập Leading cố định)
             if (!hasLeading && !isNaN(autoPctVal) && autoPctVal > 0) {
                 pranges[j].paragraphStyle.autoLeadingPercentage = autoPctVal / 100;
@@ -745,7 +924,17 @@ function doStyleEditSave() {
     applyStyleEditFieldsToBase();
     var data = loadTextPresets();
     var id = _editingStyleId || ("p" + Date.now());
-    var preset = { name: name, style: _editingBaseStyle };
+    var preset = { name: name, style: _editingBaseStyle, stroke: _editingStroke };
+    if (data.presets[id] && typeof data.presets[id].sortIndex === "number") {
+        preset.sortIndex = data.presets[id].sortIndex; // đang sửa style cũ -> giữ nguyên vị trí
+    } else {
+        var maxIdx = -1;
+        Object.keys(data.presets).forEach(function(pid) {
+            var si = data.presets[pid].sortIndex || 0;
+            if (si > maxIdx) maxIdx = si;
+        });
+        preset.sortIndex = maxIdx + 1; // style mới -> xếp cuối danh sách
+    }
     if (_editingFolder) preset.folder = _editingFolder;
     // Tự suy ra tên font để PREVIEW từ đúng font đang chọn trong dropdown Font (đã copy từ layer
     // hoặc người dùng đổi tay), áp cùng cách xử lý đuôi "Regular" như Quick Layout đang làm.
@@ -760,12 +949,18 @@ function doStyleEditSave() {
     saveTextPresets(data);
     closeStyleEditor();
     renderStyleList();
+    // Vừa sửa/lưu style hiện hành -> nếu đang Link Quick Layout to Typer Box và popup đang mở, ép
+    // render lại preview ngay để lấy đúng font mới (chữ không đổi nên updatePreviewIfNeeded thường
+    // sẽ bỏ qua).
+    if (isLinkQLTexter() && typeof window.forceRefreshPreview === "function") {
+        var overlay = document.getElementById("previewOverlay");
+        if (overlay && overlay.style.display === "block") window.forceRefreshPreview();
+    }
 }
 on("styleEditFolder", "change", function(e) { _editingFolder = e.target.value || null; });
 on("btnStyleEditCopyFromLayer", "click", doStyleEditCopyFromLayer);
 on("styleEditLeading", "input", updateAutoLeadingRowVisibility);
 on("btnStyleEditSave", "click", doStyleEditSave);
-on("btnStyleEditCancel", "click", closeStyleEditor);
 on("btnStyleEditDelete", "click", function() {
     if (!_editingStyleId) return;
     var id = _editingStyleId;
@@ -778,6 +973,19 @@ on("btnStyleEditClose", "click", closeStyleEditor);
 on("styleEditAlignLeft", "click", function() { _editingAlign = "left"; setAlignButtonsUI(_editingAlign); });
 on("styleEditAlignCenter", "click", function() { _editingAlign = "center"; setAlignButtonsUI(_editingAlign); });
 on("styleEditAlignRight", "click", function() { _editingAlign = "right"; setAlignButtonsUI(_editingAlign); });
+on("styleToggleBold", "click", function() { _editingToggles.bold = !_editingToggles.bold; setToggleButtonsUI(); });
+on("styleToggleItalic", "click", function() { _editingToggles.italic = !_editingToggles.italic; setToggleButtonsUI(); });
+on("styleToggleUnderline", "click", function() { _editingToggles.underline = !_editingToggles.underline; setToggleButtonsUI(); });
+on("styleToggleStrike", "click", function() { _editingToggles.strikethrough = !_editingToggles.strikethrough; setToggleButtonsUI(); });
+on("styleToggleAllCaps", "click", function() { _editingToggles.fontCaps = (_editingToggles.fontCaps === "allCaps") ? "normal" : "allCaps"; setToggleButtonsUI(); });
+on("styleToggleSmallCaps", "click", function() { _editingToggles.fontCaps = (_editingToggles.fontCaps === "smallCaps") ? "normal" : "smallCaps"; setToggleButtonsUI(); });
+on("styleToggleSuper", "click", function() { _editingToggles.baseline = (_editingToggles.baseline === "superScript") ? "normal" : "superScript"; setToggleButtonsUI(); });
+on("styleToggleSub", "click", function() { _editingToggles.baseline = (_editingToggles.baseline === "subScript") ? "normal" : "subScript"; setToggleButtonsUI(); });
+on("styleToggleHyphenate", "click", function() { _editingToggles.hyphenate = !_editingToggles.hyphenate; setAlignButtonsUI(_editingAlign); });
+on("styleToggleHangingRoman", "click", function() { _editingToggles.hangingRoman = !_editingToggles.hangingRoman; setAlignButtonsUI(_editingAlign); });
+on("styleEditStrokeEnabled", "change", function(e) { _editingStroke.enabled = e.target.checked; });
+on("styleEditStrokeSize", "input", function(e) { _editingStroke.size = parseFloat(e.target.value) || 0; });
+on("styleEditStrokeColor", "input", function(e) { _editingStroke.color = hexToRgb2(e.target.value); });
 
 // ---------- Tách dòng & duyệt dòng (live, không cần bấm nút tách) ----------
 function getIgnoreLinePrefixes() {
@@ -938,7 +1146,7 @@ function renderLineList() {
             var pasteBtn = document.createElement("button");
             pasteBtn.className = "tt-text-line-insert";
             pasteBtn.textContent = "⏎";
-            pasteBtn.title = "Paste this line into selected layer";
+            pasteBtn.title = "Paste this line's text into selected layer (keeps that layer's existing font/style)";
             pasteBtn.addEventListener("click", function(e) { e.stopPropagation(); pasteSpecificLineToLayer(line.rawIndex); });
             row.appendChild(pasteBtn);
         }
@@ -954,7 +1162,7 @@ function renderLinePreview() {
     renderLineList();
     scrollToCurrentLine(); // tự cuộn khung dán để dòng đang chọn nằm giữa, tiện theo dõi
     savePasteTextState(); // lưu cache mỗi khi text hoặc dòng đang chọn thay đổi
-    // Nếu đang Link Quick Layout to TypeBox và popup Quick Layout đang mở -> cập nhật preview ngay
+    // Nếu đang Link Quick Layout to Typer Box và popup Quick Layout đang mở -> cập nhật preview ngay
     if (isLinkQLTexter() && typeof window.updatePreviewIfNeeded === "function") {
         var overlay = document.getElementById("previewOverlay");
         if (overlay && overlay.style.display === "block") window.updatePreviewIfNeeded();
@@ -1025,7 +1233,7 @@ function doPasteToSelection() {
     if (!text) { alert("No line to paste — type or paste your translation first."); return; }
     var preset = getCurrentPreset();
     if (!preset) { alert("No style yet. Select a text layer, then click \"+ Add style\"."); return; }
-    var payload = { text: text, style: scaledStyle(preset) };
+    var payload = { text: text, style: scaledStyle(preset), stroke: preset.stroke };
     _exec('TT_pasteToSelection(' + JSON.stringify(payload) + ')', btn, function(res) {
         flash(btn, res);
         if (res === "OK") moveLine(1); // jump to next line to keep pasting
@@ -1033,16 +1241,111 @@ function doPasteToSelection() {
 }
 
 // ========== LINK QUICK LAYOUT TO TEXTER ==========
-// Khi bật: Quick Layout đọc text từ dòng hiện tại của TypeBox (thay vì layer đang chọn trong PTS),
+// Khi bật: Quick Layout đọc text từ dòng hiện tại của Typer Box (thay vì layer đang chọn trong PTS),
 // và bấm chọn 1 kiểu cách dòng trong Quick Layout sẽ DÁN chữ đã cách dòng đó ra Selection (dùng style
 // hiện hành của Texter) thay vì áp trực tiếp lên layer đang chọn như bình thường.
+// Auto Shape / Auto Fit (Typer Box Setting) — nối vào nút Center (alignCenter): bật lên thì sau khi
+// canh giữa bóng thoại sẽ tự chia lại dòng và/hoặc dò cỡ chữ vừa khít, tắt thì Center chạy như cũ.
+var AUTO_SHAPE_KEY = "typoCoreAutoShape";
+var AUTO_FIT_KEY = "typoCoreAutoFit";
+function isAutoShapeEnabled() { return localStorage.getItem(AUTO_SHAPE_KEY) === "1"; }
+function setAutoShapeEnabled(v) { try { localStorage.setItem(AUTO_SHAPE_KEY, v ? "1" : "0"); } catch (e) {} }
+function isAutoFitEnabled() { return localStorage.getItem(AUTO_FIT_KEY) === "1"; }
+function setAutoFitEnabled(v) { try { localStorage.setItem(AUTO_FIT_KEY, v ? "1" : "0"); } catch (e) {} }
+var AUTO_FIT_PADDING_KEY = "typoCoreAutoFitPadding";
+function getAutoFitPadding() {
+    var v = parseFloat(localStorage.getItem(AUTO_FIT_PADDING_KEY));
+    return isNaN(v) ? 10 : v; // 10 = mặc định gốc của TypeR
+}
+function setAutoFitPadding(v) { try { localStorage.setItem(AUTO_FIT_PADDING_KEY, String(v)); } catch (e) {} }
+function buildAlignCenterCall() {
+    return "alignCenter(" + (isAutoShapeEnabled() ? "true" : "false") + "," + (isAutoFitEnabled() ? "true" : "false") + "," + getAutoFitPadding() + ")";
+}
+// Center thành công nhưng riêng Auto Shape/Auto Fit bị lỗi -> vẫn hiện rõ lý do ra alert, không
+// để im lặng như "chạy xong không làm gì cả" (rất khó đoán nguyên nhân nếu không thấy lỗi thật).
+function runAlignCenter(btn) {
+    _exec(buildAlignCenterCall(), btn, function(res) {
+        flash(btn, res);
+        if (res && res.indexOf("AUTOFIT_ERROR:") === 0) {
+            alert("Align OK, but Auto Shape/Auto Fit failed:\n" + res.slice("AUTOFIT_ERROR:".length));
+        }
+    });
+}
 var LINK_QL_TEXTER_KEY = "typoCoreLinkQuickLayoutTexter";
 function isLinkQLTexter() { return localStorage.getItem(LINK_QL_TEXTER_KEY) === "1"; }
-function setLinkQLTexter(v) { try { localStorage.setItem(LINK_QL_TEXTER_KEY, v ? "1" : "0"); } catch (e) {} }
+function setLinkQLTexter(v) { try { localStorage.setItem(LINK_QL_TEXTER_KEY, v ? "1" : "0"); } catch (e) {} updateQLLoadOrNavUI(); }
+// Khi Link Quick Layout to Typer Box đang bật, nút "Load" không còn tác dụng (nguồn text luôn lấy
+// trực tiếp từ dòng hiện tại của Typer Box, tự cập nhật rồi) -> ẩn Load, hiện 2 nút đổi dòng ▲▼
+// ngay đúng chỗ đó thay vào, tận dụng chỗ trống thay vì thêm hẳn 1 hàng mới.
+function updateQLLoadOrNavUI() {
+    var linked = isLinkQLTexter();
+    var btnLoad = document.getElementById("btnPreviewLoad");
+    var navGroup = document.getElementById("btnQLLineNavGroup");
+    if (btnLoad) btnLoad.style.display = linked ? "none" : "";
+    if (navGroup) navGroup.style.display = linked ? "flex" : "none";
+}
 // Multiple Bubble đôi khi lệch vị trí khi các bóng thoại cách xa nhau trên ảnh dài (chưa rõ nguyên
 // nhân gốc, có thể do máy/thao tác riêng) — để optional, bật lên khi thấy lệch thì thử lại.
 var FIX_MB_POSITION_KEY = "typoCoreFixMBPosition";
 function isFixMBPosition() { return localStorage.getItem(FIX_MB_POSITION_KEY) === "1"; }
+var SHORTCUTS_KEY = "typoCoreShortcuts";
+var DEFAULT_SHORTCUTS = { moveUp: "E", moveDown: "D", toggleMB: "B" };
+function loadShortcuts() {
+    try {
+        var raw = localStorage.getItem(SHORTCUTS_KEY);
+        if (raw) {
+            var d = JSON.parse(raw);
+            return {
+                moveUp: d.moveUp || DEFAULT_SHORTCUTS.moveUp,
+                moveDown: d.moveDown || DEFAULT_SHORTCUTS.moveDown,
+                toggleMB: d.toggleMB || DEFAULT_SHORTCUTS.toggleMB
+            };
+        }
+    } catch (e) {}
+    return { moveUp: DEFAULT_SHORTCUTS.moveUp, moveDown: DEFAULT_SHORTCUTS.moveDown, toggleMB: DEFAULT_SHORTCUTS.toggleMB };
+}
+function saveShortcuts(sc) { try { localStorage.setItem(SHORTCUTS_KEY, JSON.stringify(sc)); } catch (e) {} }
+function openShortcutsEditor() {
+    renderShortcutsEditor();
+    var overlay = document.getElementById("shortcutsEditorOverlay");
+    if (overlay) overlay.style.display = "flex";
+}
+function closeShortcutsEditor() {
+    var overlay = document.getElementById("shortcutsEditorOverlay");
+    if (overlay) overlay.style.display = "none";
+}
+function renderShortcutsEditor() {
+    var sc = loadShortcuts();
+    var up = document.getElementById("btnShortcutMoveUp");
+    var down = document.getElementById("btnShortcutMoveDown");
+    var mb = document.getElementById("btnShortcutToggleMB");
+    if (up) up.textContent = "Win+Shift+" + sc.moveUp;
+    if (down) down.textContent = "Win+Shift+" + sc.moveDown;
+    if (mb) mb.textContent = "Win+Shift+" + sc.toggleMB;
+}
+// Bấm nút -> chờ đúng 1 lần bấm phím kế tiếp (chỉ nhận chữ cái A-Z, khớp đúng loại ký tự mà
+// ExtendScript đọc được qua keyName) -> lưu lại luôn, không cần bấm "Save" riêng.
+function startListeningForKey(btn, field) {
+    var original = btn.textContent;
+    btn.textContent = "Press a key...";
+    btn.classList.add("listening");
+    function onKeyDown(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var key = (e.key || "").toUpperCase();
+        if (key.length === 1 && key >= "A" && key <= "Z") {
+            var sc = loadShortcuts();
+            sc[field] = key;
+            saveShortcuts(sc);
+            renderShortcutsEditor();
+        } else {
+            btn.textContent = original; // phím không hợp lệ (không phải A-Z) -> huỷ, giữ nguyên cũ
+        }
+        btn.classList.remove("listening");
+        document.removeEventListener("keydown", onKeyDown, true);
+    }
+    document.addEventListener("keydown", onKeyDown, true);
+}
 function setFixMBPosition(v) { try { localStorage.setItem(FIX_MB_POSITION_KEY, v ? "1" : "0"); } catch (e) {} }
 // Khi bật: sau khi Multiple Bubble dán THÀNH CÔNG nhiều chỗ, tự tắt MB luôn (phải bật lại tay mới
 // tiếp tục) — tránh lỡ tay chọn thêm vùng ngoài ý muốn sau khi đã dán xong 1 mẻ.
@@ -1052,10 +1355,26 @@ function setSnapMultiBubble(v) { try { localStorage.setItem(SNAP_MB_KEY, v ? "1"
 function pasteFormattedTextToSelectionViaTexter(text) {
     if (!text) return;
     var preset = getCurrentPreset();
-    if (!preset) { alert("No style yet in TypeBox. Select a text layer, then click \"+ Add style\"."); return; }
-    var payload = { text: text, style: scaledStyle(preset) };
+    if (!preset) { alert("No style yet in Typer Box. Select a text layer, then click \"+ Add style\"."); return; }
+    var payload = { text: text, style: scaledStyle(preset), stroke: preset.stroke };
     _exec('TT_pasteToSelection(' + JSON.stringify(payload) + ')', null, function(res) {
-        if (res === "OK") moveLine(1); // giữ cùng hành vi tự nhảy dòng như nút Paste chính
+        if (res === "OK") {
+            moveLine(1); // giữ cùng hành vi tự nhảy dòng như nút Paste chính
+            var vis = loadVis();
+            if (!vis.manualResizeBox) _exec('resizeBox()');
+            return;
+        }
+        if (res === "ERR:noSelection") {
+            // Không có Selection nào -> thay vì báo lỗi, dán luôn text + style hiện tại vào
+            // layer text đang được chọn trong Photoshop (giống Paste to Layer thường).
+            _exec('TT_pasteToLayer(' + JSON.stringify(payload) + ')', null, function(res2) {
+                if (res2 === "OK") {
+                    moveLine(1);
+                    var vis2 = loadVis();
+                    if (!vis2.manualResizeBox) _exec('resizeBox()');
+                }
+            });
+        }
     });
 }
 // Dùng cho phím tắt Win+Ctrl khi đang Link: lấy kiểu cách dòng ĐẦU TIÊN đang hiện trong Quick Layout
@@ -1073,11 +1392,11 @@ function pasteSpecificLineToLayer(rawIndex) {
     renderLinePreview();
     var text = currentLineText();
     if (!text) return;
-    var preset = getCurrentPreset();
-    if (!preset) { alert("No style yet. Select a text layer, then click \"+ Add style\"."); return; }
     var row = document.querySelectorAll(".tt-text-line-row")[rawIndex] || null;
     var btn = row ? row.querySelector(".tt-text-line-insert") : null;
-    var payload = { text: text, style: scaledStyle(preset) };
+    // Chỉ đổi CHỮ, giữ nguyên font/style hiện có của layer đang chọn (style: null -> host.jsx tự
+    // lấy lại đúng textStyleRange/paragraphStyleRange từ chính layer đó, không ghi đè gì cả).
+    var payload = { text: text, style: null };
     _exec('TT_pasteToLayer(' + JSON.stringify(payload) + ')', btn, function(res) {
         flash(btn, res);
     });
@@ -1087,7 +1406,7 @@ function applyStyleToActiveLayer(id, btn) {
     var data = loadTextPresets();
     var preset = data.presets[id];
     if (!preset) return;
-    var payload = { text: null, style: scaledStyle(preset) };
+    var payload = { text: null, style: scaledStyle(preset), stroke: preset.stroke };
     _exec('TT_pasteToLayer(' + JSON.stringify(payload) + ')', btn, function(res) {
         flash(btn, res);
     });
@@ -1135,7 +1454,26 @@ on("btnLineNext", "click", function() { moveLine(1); });
 on("btnSaveTextPreset", "click", doSaveTextPreset);
 on("btnAddFolder", "click", doAddFolder);
 on("importStylesFile", "change", function(e) { handleImportStylesFile(e.target.files[0]); e.target.value = ""; });
+on("btnAlignSimple", "click", function() {
+    runAlignCenter(this);
+});
 on("btnMultipleBubble", "click", toggleMultipleBubble);
+on("btnToggleAutoShape", "click", function() {
+    setAutoShapeEnabled(!isAutoShapeEnabled());
+    updateAutoShapeFitDots();
+    updateLinkQLLockState(); // Auto Shape bật thì khoá Link Q.Layout (xung đột cách dòng)
+});
+on("btnToggleAutoFit", "click", function() {
+    setAutoFitEnabled(!isAutoFitEnabled());
+    updateAutoShapeFitDots();
+});
+function updateAutoShapeFitDots() {
+    var shapeDot = document.getElementById("autoShapeDot");
+    var fitDot = document.getElementById("autoFitDot");
+    if (shapeDot) shapeDot.classList.toggle("mb-active", isAutoShapeEnabled());
+    if (fitDot) fitDot.classList.toggle("mb-active", isAutoFitEnabled());
+}
+updateAutoShapeFitDots(); // đồng bộ trạng thái chấm ngay lúc panel mở (theo setting đã lưu)
 on("btnMBPause", "click", toggleMBPause);
 on("btnMBClear", "click", clearMBSelections);
 on("btnOpenTexter", "click", function() {
@@ -1359,7 +1697,7 @@ function cleanEmptyActionRows() {
         var centerBtn = document.createElement('button');
         centerBtn.setAttribute('data-tool', 'center');
         centerBtn.textContent = 'Center';
-        centerBtn.onclick = function() { runBtn('alignCenter()', this); };
+        centerBtn.onclick = function() { runBtn('alignCenterSimple()', this); };
         defaultRow.appendChild(centerBtn);
         
         actionGrid.appendChild(defaultRow);
@@ -1620,14 +1958,37 @@ function closeSettingPopup() {
         });
     }
     updateCheckboxes(loadVis());
+    updateLinkQLLockState(); // đồng bộ trạng thái khoá Link ngay lúc mở Settings (theo Auto Shape đã lưu)
     var cbLinkQL = document.getElementById("toggle_linkQuickLayoutTexter");
     if (cbLinkQL) {
         cbLinkQL.checked = isLinkQLTexter();
         cbLinkQL.addEventListener("click", function(e) {
             e.stopPropagation();
+            if (this.disabled) return;
             setLinkQLTexter(this.checked);
         });
     }
+    var inputPadding = document.getElementById("inputAutoFitPadding");
+    if (inputPadding) {
+        inputPadding.value = getAutoFitPadding();
+        inputPadding.addEventListener("click", function(e) { e.stopPropagation(); });
+        inputPadding.addEventListener("change", function() {
+            var v = parseFloat(this.value);
+            if (isNaN(v) || v < 0) v = 10;
+            setAutoFitPadding(v);
+            this.value = v;
+        });
+    }
+    on("btnOpenShortcutsEditor", "click", openShortcutsEditor);
+    on("btnShortcutsEditorClose", "click", closeShortcutsEditor);
+    on("btnShortcutsReset", "click", function() {
+        saveShortcuts({ moveUp: DEFAULT_SHORTCUTS.moveUp, moveDown: DEFAULT_SHORTCUTS.moveDown, toggleMB: DEFAULT_SHORTCUTS.toggleMB });
+        renderShortcutsEditor();
+    });
+    ["btnShortcutMoveUp", "btnShortcutMoveDown", "btnShortcutToggleMB"].forEach(function(id) {
+        var scBtn = document.getElementById(id);
+        if (scBtn) scBtn.addEventListener("click", function() { startListeningForKey(scBtn, scBtn.getAttribute("data-shortcut")); });
+    });
     var cbFixMB = document.getElementById("toggle_fixMBPosition");
     if (cbFixMB) {
         cbFixMB.checked = isFixMBPosition();
@@ -1689,59 +2050,72 @@ function setupPreviewPopup() {
     function updateSizeUI() { if (sizeDisplay) sizeDisplay.textContent = previewSize; saveFontsToStorage(); applyFontAndSizeToPreview(); }
     function applyFontAndSizeToPreview() {
         if (!grid) return;
+        // Dựng lại toàn bộ preview qua renderPreviews() (dùng kỹ thuật span + fontFamilyAttrSafe an
+        // toàn, giống hệt cách preview khi Link với Typer Box) thay vì gán thẳng style.fontFamily —
+        // cách cũ không tin cậy với tên font kiểu postScriptName (có ký tự đặc biệt/CEP không nhận).
+        // Lấy lại text MỚI thay vì chỉ dựa vào lastPreviewText (có thể đang trống nếu Font List được
+        // mở trước khi popup preview kịp render lần đầu).
+        getQuickLayoutSourceText(function(text) {
+            if (text && text !== "null" && text !== "undefined" && (text + "").indexOf("ERROR") !== 0) {
+                lastPreviewText = text;
+                renderPreviews(text);
+            }
+        });
         var items = grid.querySelectorAll(".preview-item");
-        var font = (selectedFontIndex >= 0 && customFonts[selectedFontIndex]) ? customFonts[selectedFontIndex] : "";
-        items.forEach(function(item) { item.style.fontSize = previewSize + "px"; item.style.fontFamily = font ? '"' + font + '"' : ""; });
+        items.forEach(function(item) { item.style.fontSize = previewSize + "px"; });
     }
     function renderFontList() {
         if (!fontPickerList) return;
         fontPickerList.innerHTML = "";
-        if (customFonts.length === 0) { fontPickerList.innerHTML = '<div style="padding:10px;color:#888;">No fonts. Click "Add".</div>'; return; }
+        if (customFonts.length === 0) {
+            var empty = document.createElement("div");
+            empty.style.cssText = "padding:10px;color:#888;";
+            empty.textContent = 'No font slots yet. Click "Add slot" below.';
+            fontPickerList.appendChild(empty);
+        }
         customFonts.forEach(function(f, index) {
             var div = document.createElement("div");
             div.className = "font-item" + (index === selectedFontIndex ? " selected" : "");
             var indexSpan = document.createElement("span"); indexSpan.className = "font-index"; indexSpan.textContent = (index + 1);
+            indexSpan.title = "Use this slot for preview";
             indexSpan.addEventListener("click", function(e) { e.stopPropagation(); selectFont(index); });
             div.appendChild(indexSpan);
-            var nameSpan = document.createElement("span"); nameSpan.className = "font-name"; nameSpan.textContent = f;
-            nameSpan.addEventListener("click", function(e) {
+            // Dropdown chọn đúng font thật (giống Style Edit), thay cho gõ tay tên font trước đây —
+            // tái dùng _userFontsCache đã tải sẵn, không cần chính xác tuyệt đối tên font nữa.
+            var sel = document.createElement("select");
+            sel.className = "font-select";
+            fillFontSelectGeneric(sel, fontSlotPostScriptName(customFonts[index]));
+            sel.addEventListener("click", function(e) { e.stopPropagation(); });
+            sel.addEventListener("change", function(e) {
                 e.stopPropagation();
-                if (nameSpan.querySelector("input")) return;
-                var oldName = customFonts[index];
-                var input = document.createElement("input"); input.type = "text"; input.value = oldName; input.style.width = "100%";
-                nameSpan.innerHTML = ""; nameSpan.appendChild(input); input.focus(); input.select();
-                function finishEdit() {
-                    var newName = input.value.trim();
-                    if (newName && newName !== oldName) {
-                        if (customFonts.includes(newName)) { alert("Font name already exists."); input.value = oldName; }
-                        else { customFonts[index] = newName; saveFontsToStorage(); }
-                    }
-                    renderFontList();
-                    if (selectedFontIndex >= customFonts.length) selectedFontIndex = -1;
-                    saveFontsToStorage(); applyFontAndSizeToPreview();
-                }
-                input.addEventListener("blur", finishEdit);
-                input.addEventListener("keydown", function(e) { if (e.key === "Enter") input.blur(); e.stopPropagation(); });
+                var opt = sel.selectedOptions && sel.selectedOptions[0];
+                var derived = opt ? deriveDisplayFontName(opt.textContent) : "";
+                customFonts[index] = { postScriptName: sel.value, previewName: derived };
+                selectedFontIndex = index; // chọn font ở slot nào -> tự dùng luôn slot đó để preview
+                saveFontsToStorage();
+                renderFontList(); // vẽ lại để cập nhật khung "đang chọn" (class .selected) đúng slot
+                applyFontAndSizeToPreview();
             });
-            div.appendChild(nameSpan);
+            div.appendChild(sel);
             var removeSpan = document.createElement("span"); removeSpan.className = "font-remove"; removeSpan.textContent = "✕";
             removeSpan.addEventListener("click", function(e) { e.stopPropagation(); removeFont(index); });
             div.appendChild(removeSpan);
             fontPickerList.appendChild(div);
         });
     }
-    function selectFont(index) { selectedFontIndex = index; saveFontsToStorage(); renderFontList(); applyFontAndSizeToPreview(); if (fontPicker) fontPicker.style.display = "none"; }
+    function selectFont(index) { selectedFontIndex = index; saveFontsToStorage(); renderFontList(); applyFontAndSizeToPreview(); }
     function removeFont(index) { customFonts.splice(index,1); if(selectedFontIndex === index) selectedFontIndex = -1; else if(selectedFontIndex > index) selectedFontIndex--; saveFontsToStorage(); renderFontList(); applyFontAndSizeToPreview(); }
     function addFont() {
-        if (customFonts.length >= maxFonts) { alert("Maximum " + maxFonts + " fonts allowed."); return; }
-        var inputField = document.getElementById("newFontName");
-        var fontName = inputField ? inputField.value.trim() : "";
-        if (!fontName) { alert("Please enter a font name."); return; }
-        if (customFonts.includes(fontName)) { alert("Font already in the list."); return; }
-        customFonts.push(fontName); saveFontsToStorage(); renderFontList(); selectFont(customFonts.length - 1);
-        if (inputField) inputField.value = "";
+        if (customFonts.length >= maxFonts) { alert("Maximum " + maxFonts + " font slots allowed."); return; }
+        customFonts.push(""); // thêm 1 slot trống -> chọn font qua dropdown ngay bên dưới
+        saveFontsToStorage(); renderFontList(); selectFont(customFonts.length - 1);
     }
-    if (btnFont) btnFont.addEventListener("click", function() { renderFontList(); if (fontPicker) fontPicker.style.display = "flex"; cs.evalScript('getTextFont()', function(layerFont) { var input = document.getElementById("newFontName"); if (input && layerFont && layerFont !== "ERROR" && layerFont !== "NO_LAYER") input.value = layerFont; }); });
+    if (btnFont) btnFont.addEventListener("click", function() {
+        ensureUserFontsLoaded(function() {
+            renderFontList();
+            if (fontPicker) fontPicker.style.display = "flex";
+        });
+    });
     if (btnFontClose) btnFontClose.addEventListener("click", function() { if (fontPicker) fontPicker.style.display = "none"; });
     if (btnAddFont) btnAddFont.addEventListener("click", addFont);
     if (btnSizeDown) btnSizeDown.addEventListener("click", function() { if (previewSize > 1) previewSize--; updateSizeUI(); });
@@ -1756,8 +2130,8 @@ function setupPreviewPopup() {
         }
         var items = buildCasePreviewItems(text);
         grid.innerHTML = "";
-        // Khi đang Link Quick Layout to TypeBox -> lấy FONT (không lấy size) từ style hiện hành
-        // của TypeBox để preview, thay cho font tự chọn riêng của Quick Layout.
+        // Khi đang Link Quick Layout to Typer Box -> lấy FONT (không lấy size) từ style hiện hành
+        // của Typer Box để preview, thay cho font tự chọn riêng của Quick Layout.
         var linkedFont = null;
         if (isLinkQLTexter()) {
             var curPreset = getCurrentPreset();
@@ -1767,8 +2141,8 @@ function setupPreviewPopup() {
             var item = document.createElement("div");
             item.className = "preview-item";
             item.style.fontSize = previewSize + "px";
-            var fam = linkedFont || ((selectedFontIndex >= 0 && customFonts[selectedFontIndex]) ? customFonts[selectedFontIndex] : null);
-            var innerHtml = items[i].text.replace(/\n/g, "<br>");
+            var fam = linkedFont || ((selectedFontIndex >= 0 && customFonts[selectedFontIndex]) ? fontSlotPreviewName(customFonts[selectedFontIndex]) : null);
+            var innerHtml = escapeHtml(items[i].text).replace(/\n/g, "<br>");
             item.innerHTML = fam ? ("<span style='font-family: \"" + fontFamilyAttrSafe(fam) + "\"'>" + innerHtml + "</span>") : innerHtml;
             item.addEventListener("click", (function(caseNum, formattedText) {
                 return function() {
@@ -1789,7 +2163,7 @@ function setupPreviewPopup() {
     }
 
     // Nguồn text cho Quick Layout: bình thường đọc từ layer text đang chọn trong Photoshop (getText()).
-    // Khi bật "Link Quick Layout to TypeBox" -> đọc từ dòng hiện tại trong TypeBox thay vào đó.
+    // Khi bật "Link Quick Layout to Typer Box" -> đọc từ dòng hiện tại trong Typer Box thay vào đó.
     function getQuickLayoutSourceText(callback) {
         if (isLinkQLTexter()) { callback(currentLineText() || ""); return; }
         cs.evalScript('getText()', callback);
@@ -1807,6 +2181,13 @@ function setupPreviewPopup() {
         });
     }
     window.updatePreviewIfNeeded = updatePreviewIfNeeded;
+    // Ép render lại preview bất kể chữ có đổi hay không — dùng khi CHỈ đổi style/font (chữ vẫn y
+    // nguyên) mà updatePreviewIfNeeded() bình thường sẽ bỏ qua vì so sánh thấy text giống lần trước.
+    function forceRefreshPreview() {
+        lastPreviewText = "";
+        updatePreviewIfNeeded();
+    }
+    window.forceRefreshPreview = forceRefreshPreview;
 
     function loadPreviews() {
         getQuickLayoutSourceText(function(text) {
@@ -1823,6 +2204,7 @@ function setupPreviewPopup() {
     if (btnOpen) btnOpen.addEventListener("click", function() {
         if (overlay && overlay.style.display === "block") { closePopup(); return; }
         if (overlay) overlay.style.display = "block";
+        updateQLLoadOrNavUI();
         loadPreviews();
         if (previewInterval) clearInterval(previewInterval);
         var vis = loadVis();
@@ -1837,6 +2219,10 @@ function setupPreviewPopup() {
     if (btnClose) btnClose.addEventListener("click", closePopup);
     if (overlay) overlay.addEventListener("click", function(e) { if (e.target === overlay) closePopup(); });
     if (btnLoad) btnLoad.addEventListener("click", loadPreviews);
+    var btnQLPrev = document.getElementById("btnQLLinePrev");
+    var btnQLNext = document.getElementById("btnQLLineNext");
+    if (btnQLPrev) btnQLPrev.addEventListener("click", function() { moveLine(-1); });
+    if (btnQLNext) btnQLNext.addEventListener("click", function() { moveLine(1); });
     var popupEl = document.getElementById('previewPopup');
     var handleEl = document.querySelector('.resize-handle');
     if (popupEl && handleEl) {
@@ -1853,11 +2239,9 @@ function setupPreviewPopup() {
         if (inp && window._prvToolbarMode === 'A') inp.value = previewSize;
     };
     window._prvOpenFontPicker = function() {
-        renderFontList();
-        if (fontPicker) fontPicker.style.display = "flex";
-        cs.evalScript('getTextFont()', function(f) {
-            var fi = document.getElementById("newFontName");
-            if (fi && f && f !== "ERROR" && f !== "NO_LAYER") fi.value = f;
+        ensureUserFontsLoaded(function() {
+            renderFontList();
+            if (fontPicker) fontPicker.style.display = "flex";
         });
     };
     if (btnOpen) btnOpen.click();
@@ -2825,7 +3209,7 @@ window._prvToolbarMode = 'A';
     if (btnMode) btnMode.addEventListener("click", function() { switchMode(window._prvToolbarMode === 'A' ? 'B' : 'A'); });
     if (btnLeft) btnLeft.addEventListener("click", function() {
         if (window._prvToolbarMode === 'A') { if (window._prvOpenFontPicker) window._prvOpenFontPicker(); }
-        else { _exec('alignCenter()', this); }
+        else { runBtn('alignCenterSimple()', this); }
     });
     if (btnSpinUp) btnSpinUp.addEventListener("click", function(e) { e.stopPropagation(); var v = getNum() + 1; setNum(v); if (window._prvToolbarMode === 'A') { if (window._prvSetPreviewSize) window._prvSetPreviewSize(v); } else { _prvStep = getNum(); } });
     if (btnSpinDn) btnSpinDn.addEventListener("click", function(e) { e.stopPropagation(); var v = Math.max(1, getNum() - 1); setNum(v); if (window._prvToolbarMode === 'A') { if (window._prvSetPreviewSize) window._prvSetPreviewSize(v); } else { _prvStep = getNum(); } });
@@ -2892,7 +3276,7 @@ function makeFxResizable() {
     }
 }
 
-// Thanh kéo chỉnh chiều cao (giống cơ chế .fx-resize-handle) — dùng lại cho cả 2 thanh của TypeBox
+// Thanh kéo chỉnh chiều cao (giống cơ chế .fx-resize-handle) — dùng lại cho cả 2 thanh của Typer Box
 function makeVerticalResizable(el, handle, storageKey, minH, maxH, overlayEl) {
     if (!el || !handle) return;
     var saved = localStorage.getItem(storageKey);
@@ -2981,7 +3365,8 @@ function pollMBSelection() {
         _mbSelections.push({
             top: data.top, left: data.left, right: data.right, bottom: data.bottom,
             width: data.width, height: data.height, xMid: data.xMid, yMid: data.yMid,
-            lineIndex: _pasteLineIdx // gắn kèm đúng dòng đang chọn LÚC bắt được vùng này
+            lineIndex: _pasteLineIdx, // gắn kèm đúng dòng đang chọn LÚC bắt được vùng này
+            styleId: loadTextPresets().defaultId || null // gắn kèm đúng style đang chọn LÚC bắt được vùng này
         });
         moveLine(1); // tự nhảy sang dòng kế tiếp -> preview hiện ngay dòng sẽ dùng cho bóng thoại kế
         updateMBUi();
@@ -3023,13 +3408,17 @@ function doMultipleBubblePaste() {
         alert("No bubble selections captured yet.\nTurn on MB (green dot) and select each speech bubble in Photoshop, then press Win+Ctrl to paste them all.");
         return;
     }
-    var preset = getCurrentPreset();
-    if (!preset) { alert("No style in TypeBox yet. Select a sample text layer, then click \"+ Add style\" first."); return; }
-    if (!_pasteLines.length) { alert("No line to paste in TypeBox."); return; }
+    var currentPreset = getCurrentPreset();
+    if (!currentPreset) { alert("No style in Typer Box yet. Select a sample text layer, then click \"+ Add style\" first."); return; }
+    if (!_pasteLines.length) { alert("No line to paste in Typer Box."); return; }
 
+    var data = loadTextPresets();
     // Lấy đúng chữ theo lineIndex đã gắn kèm lúc chọn từng vùng (không phải theo thứ tự thô) —
     // nếu dòng đó không còn hợp lệ (đã xóa/đã thành dòng trống) thì quét tới dòng kế tiếp còn dùng được.
+    // Tương tự, lấy đúng style đã gắn kèm cho vùng đó (styleId) — nếu style đó đã bị xóa thì mới
+    // dùng tạm style hiện tại thay thế.
     var texts = [];
+    var styles = [];
     var fallbackIdx = 0;
     for (var s = 0; s < _mbSelections.length; s++) {
         var sel = _mbSelections[s];
@@ -3046,12 +3435,15 @@ function doMultipleBubblePaste() {
         }
         if (!line) break; // hết dòng để dán -> dừng, không tạo thêm layer thừa
         texts.push(line.text);
+        var presetForSel = (sel.styleId && data.presets[sel.styleId]) ? data.presets[sel.styleId] : currentPreset;
+        var s2 = scaledStyle(presetForSel);
+        styles.push({ textProps: s2 ? s2.textProps : null, stroke: presetForSel.stroke });
     }
     if (!texts.length) { alert("No more lines left to paste."); return; }
 
     var payload = {
         texts: texts,
-        styles: [scaledStyle(preset)],
+        styles: styles,
         selections: _mbSelections.slice(0, texts.length),
         padding: 0,
         fixPosition: isFixMBPosition()
@@ -3070,39 +3462,85 @@ function doMultipleBubblePaste() {
 function firePasteHotkey() {
     if (_mbActive) { doMultipleBubblePaste(); return; }
     if (isLinkQLTexter()) pasteFirstQuickLayoutCase();
-    else doPasteToSelection(); // Win+Ctrl = Paste (TypeBox)
+    else doPasteToSelection(); // Win+Ctrl = Paste (Typer Box)
 }
 function fireCenterHotkey() {
-    var btn = document.querySelector('[data-tool="center"]'); // Center có sẵn ở Quick Layout / Actions
-    _exec('alignCenter()', btn);
+    var btn = document.getElementById("btnAlignSimple"); // Win+Alt = Align (tự động), nháy đúng nút này
+    runAlignCenter(btn);
 }
+var _navHotkeyReleased = true; // edge-detect RIÊNG cho phím đổi dòng + MB, KHÔNG áp cooldown 2s như Paste/Center
+                                // vì điều hướng lên/xuống cần bấm nhanh liên tục được nhiều lần
+var _bHotkeyReleased = true; // edge-detect riêng cho Win+Ctrl+Alt (bật/tắt Multiple Bubble)
 function pollHotkeys() {
-    if (!_texterHotkeysEnabled) return; // TypeBox đang bị ẩn -> tắt hẳn các phím tắt bên dưới
+    if (!_texterHotkeysEnabled) return; // Typer Box đang bị ẩn -> tắt hẳn các phím tắt bên dưới
     cs.evalScript('getHotkeyCombo()', function(combo) {
+        // Win+Ctrl/Win+Alt LUÔN khoá cứng, bắn ngay lập tức — không còn cần chờ/debounce gì nữa,
+        // vì 3 chức năng còn lại giờ dùng Win+Shift+X (khác hẳn nhóm Ctrl/Alt), không còn đụng độ.
         if (combo === "metaCtrl") {
             if (!hotkeyCanFire()) return;
-            firePasteHotkey(); // Win+Ctrl = Paste (TypeBox / Multiple Bubble)
-        } else if (combo === "metaAlt") {
-            if (!hotkeyCanFire()) return;
-            fireCenterHotkey(); // Win+Alt = Center
-        } else {
-            _hotkeyReleased = true; // không giữ tổ hợp nào -> sẵn sàng cho lần bắn kế tiếp
+            firePasteHotkey();
+            return;
         }
+        if (combo === "metaAlt") {
+            if (!hotkeyCanFire()) return;
+            fireCenterHotkey();
+            return;
+        }
+        if (combo && combo.indexOf("winShift:") === 0) {
+            var pressedKey = combo.slice("winShift:".length);
+            var sc = loadShortcuts();
+            if (pressedKey === sc.moveUp) {
+                if (!_navHotkeyReleased) return;
+                _navHotkeyReleased = false;
+                moveLine(-1);
+                return;
+            }
+            if (pressedKey === sc.moveDown) {
+                if (!_navHotkeyReleased) return;
+                _navHotkeyReleased = false;
+                moveLine(1);
+                return;
+            }
+            if (pressedKey === sc.toggleMB) {
+                if (!_bHotkeyReleased) return;
+                _bHotkeyReleased = false;
+                toggleMultipleBubble();
+                return;
+            }
+            // Bấm Win+Shift+chữ nào đó không khớp gán nào cả -> coi như không có phím nào được giữ
+            _navHotkeyReleased = true;
+            _bHotkeyReleased = true;
+            return;
+        }
+        // Không giữ tổ hợp liên quan nào -> sẵn sàng cho lần bắn kế tiếp
+        _navHotkeyReleased = true;
+        _bHotkeyReleased = true;
+        _hotkeyReleased = true;
     });
 }
-// Khi TypeBox bị ẩn: tắt hẳn phím tắt, đồng thời khóa cứng "Link Quick Layout to TypeBox"
+// Khi Typer Box bị ẩn: tắt hẳn phím tắt, đồng thời khóa cứng "Link Quick Layout to Typer Box"
 // (mờ đi, không cho tick) — vì Link phụ thuộc hoàn toàn vào Texter đang hoạt động.
 function applyTexterStudioLockState(enabled) {
     _texterHotkeysEnabled = enabled;
+    updateLinkQLLockState();
+}
+// Link Q.Layout to Typer Box bị khoá (mờ đi, không cho tick) nếu MỘT trong 2 điều kiện đúng:
+// (1) Typer Box đang bị ẩn -> Link vô nghĩa vì không có gì để liên kết tới.
+// (2) Auto Shape đang bật -> Auto Shape sẽ tự ghi đè cách cách dòng đã chọn tay qua Quick Layout
+//     ngay khi Center chạy, nên bật chung 2 cái là xung đột logic, khoá lại cho khỏi lỡ tay.
+function updateLinkQLLockState() {
+    var vis = loadVis();
+    var texterVisible = vis.texterStudio !== false;
+    var autoShapeOn = isAutoShapeEnabled();
+    var shouldLock = !texterVisible || autoShapeOn;
     var linkCb = document.getElementById("toggle_linkQuickLayoutTexter");
-    if (linkCb) {
-        linkCb.disabled = !enabled;
-        var row = linkCb.closest(".setting-item");
-        if (row) row.classList.toggle("tt-setting-disabled", !enabled);
-        if (!enabled && isLinkQLTexter()) {
-            setLinkQLTexter(false);
-            linkCb.checked = false;
-        }
+    if (!linkCb) return;
+    linkCb.disabled = shouldLock;
+    var row = linkCb.closest(".setting-item");
+    if (row) row.classList.toggle("tt-setting-disabled", shouldLock);
+    if (shouldLock && isLinkQLTexter()) {
+        setLinkQLTexter(false);
+        linkCb.checked = false;
     }
 }
 function startHotkeyPolling() {
