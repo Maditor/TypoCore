@@ -4,13 +4,14 @@
 - Gộp chức năng TyperTool và TypeR thành 1 công cụ mới: **Typer Box**
 - Quản lý style: tạo/sửa/xoá, gộp theo folder, kéo-thả đổi thứ tự
 - Import/Export style dùng chung file với TyperTool hoặc TypeR
+- "Paste this line into selected layer" giờ chỉ đổi chữ, giữ nguyên font/style của layer đang chọn
   
 **Multiple Bubble**
 - Chọn lần lượt nhiều bóng thoại, dán hàng loạt đúng dòng vào đúng bóng
 - **Snap Multiple Bubble**: tự tắt sau khi dán hàng loạt xong
 - **Fix MB Position**: tự chỉnh lại vị trí thoại nếu bị lệch sau khi dán
   
-**Link Quick Layout ↔ Typer Box**
+**Link to Quick Layout**
 - Xem trước kiểu cách dòng ngay trên dòng đang dịch trước khi dán
 - Có Selection → dán vào Selection; không có Selection → tự dán vào layer text đang chọn
 - Font preview tự cập nhật khi đổi style
@@ -20,17 +21,19 @@
 - **Center**: canh giữa vào Selection đã tự chọn + tự cắt đuôi bóng thoại bằng tay (như bản cũ)
 - **Align** (icon dưới cùng, cũng là phím **Win+Alt**): tự nhận diện bóng thoại (Magic Wand) và cắt đuôi trước khi canh giữa, không cần tự khoanh vùng
   - **Auto Shape**: tự chia lại dòng cho vừa hình bóng thoại
-  - **Auto Fit**: tự dò cỡ chữ lớn nhất vừa khít bóng thoại
+  - **Auto Fit**: tự dò cỡ chữ lớn nhất vừa khít bóng thoại, có tuỳ chỉnh Ref No. (khoảng lề)
 - Dùng Center để canh lại thủ công khi Align tự động canh chưa như ý
   
-**Phím tắt**
-- Win+Ctrl: Dán · Win+Alt: Align (tự động)
-- Win+Shift+E / Win+Shift+D: Đổi dòng lên/xuống trong Typer Box
-- Win+Shift+B: Bật/tắt Multiple Bubble
+**Phím tắt — có thể tự tuỳ chỉnh**
+- Win+Ctrl: Dán · Win+Alt: Align (2 phím này cố định, luôn bắn ngay lập tức)
+- Win+Shift+E / D / B: Đổi dòng lên/xuống và bật/tắt Multiple Bubble trong Typer Box
+- Mở **Typer Box Setting → Edit Shortcuts** để tự đổi lại 3 phím trên nếu bị trùng với Photoshop/Windows
   
 **Khác**
 - Giao diện làm mới hoàn toàn: icon SVG, bố cục gọn hơn
 - Sửa lỗi preview Quick Layout hiển thị sai khi chữ có dấu `<>`
+- Sửa lỗi mất khoảng trống khi dán nhiều dòng vào layer (qua Link to Quick Layout khi không có Selection)
+- Bỏ nháy xanh/đỏ báo thành công/thất bại — thao tác chạy êm, không làm phiền
 - **Cần tắt hẳn TyperTool hoặc TypeR** nếu muốn dùng Typer Box chính xác (tránh đụng phím tắt)
 - Ẩn Typer Box trong Setting sẽ tự tắt luôn phím tắt liên quan, không ảnh hưởng 2 tool trên
 ---
