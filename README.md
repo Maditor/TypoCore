@@ -4,7 +4,6 @@
 - Gộp chức năng TyperTool và TypeR thành 1 công cụ mới: **Typer Box**
 - Quản lý style: tạo/sửa/xoá, gộp theo folder, kéo-thả đổi thứ tự
 - Import/Export style dùng chung file với TyperTool hoặc TypeR
-- "Paste this line into selected layer" giờ chỉ đổi chữ, giữ nguyên font/style của layer đang chọn
   
 **Multiple Bubble**
 - Chọn lần lượt nhiều bóng thoại, dán hàng loạt đúng dòng vào đúng bóng
@@ -25,15 +24,13 @@
 - Dùng Center để canh lại thủ công khi Align tự động canh chưa như ý
   
 **Phím tắt — có thể tự tuỳ chỉnh**
-- Win+Ctrl: Dán · Win+Alt: Align (2 phím này cố định, luôn bắn ngay lập tức)
+- Win+Ctrl: Dán · Win+Alt: Align (2 phím này cố định)
 - Win+Shift+E / D / B: Đổi dòng lên/xuống và bật/tắt Multiple Bubble trong Typer Box
 - Mở **Typer Box Setting → Edit Shortcuts** để tự đổi lại 3 phím trên nếu bị trùng với Photoshop/Windows
   
 **Khác**
 - Giao diện làm mới hoàn toàn: icon SVG, bố cục gọn hơn
 - Sửa lỗi preview Quick Layout hiển thị sai khi chữ có dấu `<>`
-- Sửa lỗi mất khoảng trống khi dán nhiều dòng vào layer (qua Link to Quick Layout khi không có Selection)
-- Bỏ nháy xanh/đỏ báo thành công/thất bại — thao tác chạy êm, không làm phiền
 - **Cần tắt hẳn TyperTool hoặc TypeR** nếu muốn dùng Typer Box chính xác (tránh đụng phím tắt)
 - Ẩn Typer Box trong Setting sẽ tự tắt luôn phím tắt liên quan, không ảnh hưởng 2 tool trên
 ---
