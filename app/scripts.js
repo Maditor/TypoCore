@@ -1284,27 +1284,34 @@ function updateQLLoadOrNavUI() {
     if (btnLoad) btnLoad.style.display = linked ? "none" : "";
     if (navGroup) navGroup.style.display = linked ? "flex" : "none";
 }
-// Multiple Bubble đôi khi lệch vị trí khi các bóng thoại cách xa nhau trên ảnh dài (chưa rõ nguyên
-// nhân gốc, có thể do máy/thao tác riêng) — để optional, bật lên khi thấy lệch thì thử lại.
-var FIX_MB_POSITION_KEY = "typoCoreFixMBPosition";
-function isFixMBPosition() { return localStorage.getItem(FIX_MB_POSITION_KEY) === "1"; }
 var SHORTCUTS_KEY = "typoCoreShortcuts";
-var DEFAULT_SHORTCUTS = { moveUp: "E", moveDown: "D", toggleMB: "B" };
+// Mỗi shortcut giờ là 1 MẢNG đầy đủ token (modifier + chữ), giống hệt cách TypeR lưu — không chỉ
+// 1 chữ cái nữa, vì người dùng có thể muốn đổi cả tổ hợp modifier chứ không chỉ đổi chữ cuối.
+var DEFAULT_SHORTCUTS = { moveUp: ["WIN", "SHIFT", "E"], moveDown: ["WIN", "SHIFT", "D"], toggleMB: ["WIN", "SHIFT", "B"] };
 function loadShortcuts() {
     try {
         var raw = localStorage.getItem(SHORTCUTS_KEY);
         if (raw) {
             var d = JSON.parse(raw);
             return {
-                moveUp: d.moveUp || DEFAULT_SHORTCUTS.moveUp,
-                moveDown: d.moveDown || DEFAULT_SHORTCUTS.moveDown,
-                toggleMB: d.toggleMB || DEFAULT_SHORTCUTS.toggleMB
+                moveUp: (Array.isArray(d.moveUp) && d.moveUp.length) ? d.moveUp : DEFAULT_SHORTCUTS.moveUp,
+                moveDown: (Array.isArray(d.moveDown) && d.moveDown.length) ? d.moveDown : DEFAULT_SHORTCUTS.moveDown,
+                toggleMB: (Array.isArray(d.toggleMB) && d.toggleMB.length) ? d.toggleMB : DEFAULT_SHORTCUTS.toggleMB
             };
         }
     } catch (e) {}
-    return { moveUp: DEFAULT_SHORTCUTS.moveUp, moveDown: DEFAULT_SHORTCUTS.moveDown, toggleMB: DEFAULT_SHORTCUTS.toggleMB };
+    return { moveUp: DEFAULT_SHORTCUTS.moveUp.slice(), moveDown: DEFAULT_SHORTCUTS.moveDown.slice(), toggleMB: DEFAULT_SHORTCUTS.toggleMB.slice() };
 }
 function saveShortcuts(sc) { try { localStorage.setItem(SHORTCUTS_KEY, JSON.stringify(sc)); } catch (e) {} }
+// So khớp tổ hợp đang giữ (mảng) với tổ hợp đã gán (mảng) — phải khớp CHÍNH XÁC, đúng số lượng
+// token và mỗi token đều có mặt, giống hệt cách TypeR so khớp (_t trong code gốc của họ).
+function comboMatches(pressed, target) {
+    if (!pressed || !target || pressed.length !== target.length) return false;
+    for (var i = 0; i < target.length; i++) {
+        if (pressed.indexOf(target[i]) === -1) return false;
+    }
+    return true;
+}
 function openShortcutsEditor() {
     renderShortcutsEditor();
     var overlay = document.getElementById("shortcutsEditorOverlay");
@@ -1313,40 +1320,63 @@ function openShortcutsEditor() {
 function closeShortcutsEditor() {
     var overlay = document.getElementById("shortcutsEditorOverlay");
     if (overlay) overlay.style.display = "none";
+    if (_shortcutCaptureInterval) { clearInterval(_shortcutCaptureInterval); _shortcutCaptureInterval = null; }
+}
+function formatCombo(arr) {
+    if (!arr || !arr.length) return "(none)";
+    var labelMap = { WIN: "Win", CTRL: "Ctrl", ALT: "Alt", SHIFT: "Shift" };
+    return arr.map(function(t) { return labelMap[t] || t; }).join("+");
 }
 function renderShortcutsEditor() {
     var sc = loadShortcuts();
     var up = document.getElementById("btnShortcutMoveUp");
     var down = document.getElementById("btnShortcutMoveDown");
     var mb = document.getElementById("btnShortcutToggleMB");
-    if (up) up.textContent = "Win+Shift+" + sc.moveUp;
-    if (down) down.textContent = "Win+Shift+" + sc.moveDown;
-    if (mb) mb.textContent = "Win+Shift+" + sc.toggleMB;
+    if (up) up.textContent = formatCombo(sc.moveUp);
+    if (down) down.textContent = formatCombo(sc.moveDown);
+    if (mb) mb.textContent = formatCombo(sc.toggleMB);
 }
-// Bấm nút -> chờ đúng 1 lần bấm phím kế tiếp (chỉ nhận chữ cái A-Z, khớp đúng loại ký tự mà
-// ExtendScript đọc được qua keyName) -> lưu lại luôn, không cần bấm "Save" riêng.
+// Bấm nút -> giữ tổ hợp phím MUỐN gán (VD Win+Shift+E) -> ExtendScript đọc được đủ modifier + chữ
+// thì lưu lại luôn nguyên cả tổ hợp, không chỉ 1 chữ — giống hệt cách TypeR làm.
+var _shortcutCaptureInterval = null;
 function startListeningForKey(btn, field) {
     var original = btn.textContent;
-    btn.textContent = "Press a key...";
+    btn.textContent = "Hold your combo...";
     btn.classList.add("listening");
-    function onKeyDown(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        var key = (e.key || "").toUpperCase();
-        if (key.length === 1 && key >= "A" && key <= "Z") {
+    if (_shortcutCaptureInterval) clearInterval(_shortcutCaptureInterval);
+
+    function stopCapture() {
+        if (_shortcutCaptureInterval) { clearInterval(_shortcutCaptureInterval); _shortcutCaptureInterval = null; }
+        btn.classList.remove("listening");
+        document.removeEventListener("keydown", onEscape, true);
+    }
+    // Escape là phím thường (không có Win), trình duyệt đọc được bình thường -> dùng riêng để huỷ.
+    function onEscape(e) {
+        if (e.key === "Escape") {
+            e.preventDefault(); e.stopPropagation();
+            btn.textContent = original;
+            stopCapture();
+        }
+    }
+    document.addEventListener("keydown", onEscape, true);
+
+    // Phần chính: hỏi ExtendScript đang giữ tổ hợp gì (poll liên tục) — vì trình duyệt không đọc
+    // được phím Win, phải nhờ ExtendScript đọc rồi gửi qua. Đủ ít nhất 1 modifier + 1 chữ mới nhận.
+    _shortcutCaptureInterval = setInterval(function() {
+        cs.evalScript('getHotkeyCombo()', function(raw) {
+            if (!raw) return; // chưa giữ gì cả -> tiếp tục chờ
+            var combo = raw.split(",");
+            var hasModifier = combo.indexOf("WIN") !== -1 || combo.indexOf("CTRL") !== -1 || combo.indexOf("ALT") !== -1 || combo.indexOf("SHIFT") !== -1;
+            var hasLetter = combo.some(function(k) { return k.length === 1 && k >= "A" && k <= "Z"; });
+            if (!hasModifier || !hasLetter) return; // chưa đủ modifier+chữ -> tiếp tục chờ
             var sc = loadShortcuts();
-            sc[field] = key;
+            sc[field] = combo;
             saveShortcuts(sc);
             renderShortcutsEditor();
-        } else {
-            btn.textContent = original; // phím không hợp lệ (không phải A-Z) -> huỷ, giữ nguyên cũ
-        }
-        btn.classList.remove("listening");
-        document.removeEventListener("keydown", onKeyDown, true);
-    }
-    document.addEventListener("keydown", onKeyDown, true);
+            stopCapture();
+        });
+    }, 80);
 }
-function setFixMBPosition(v) { try { localStorage.setItem(FIX_MB_POSITION_KEY, v ? "1" : "0"); } catch (e) {} }
 // Khi bật: sau khi Multiple Bubble dán THÀNH CÔNG nhiều chỗ, tự tắt MB luôn (phải bật lại tay mới
 // tiếp tục) — tránh lỡ tay chọn thêm vùng ngoài ý muốn sau khi đã dán xong 1 mẻ.
 var SNAP_MB_KEY = "typoCoreSnapMultiBubble";
@@ -1412,6 +1442,18 @@ function applyStyleToActiveLayer(id, btn) {
     });
 }
 on("pasteTextInput", "input", refreshPasteLines);
+// Chặn Ctrl+Z (Undo) và Ctrl+X (Cut) khi con trỏ KHÔNG đang ở trong ô dán bản dịch — tránh lỡ tay
+// bấm ở chỗ khác trong panel rồi lọt ra ngoài thành Undo/Cut thật trên Photoshop (mất luôn bản dịch
+// vừa dán ra canvas). Khi đang soạn thảo NGAY TRONG ô này thì vẫn cho hoạt động bình thường như
+// textarea thường (undo/cut lúc gõ là chuyện tự nhiên, không chặn).
+document.addEventListener("keydown", function(e) {
+    var key = (e.key || "").toLowerCase();
+    if (!((e.ctrlKey || e.metaKey) && (key === "z" || key === "x"))) return;
+    var pasteInput = document.getElementById("pasteTextInput");
+    if (document.activeElement === pasteInput) return; // đang gõ trong ô -> để hoạt động bình thường
+    e.preventDefault();
+    e.stopPropagation();
+}, true);
 on("pasteTextInput", "click", syncLineFromCaret);
 on("pasteTextInput", "keyup", syncLineFromCaret);
 // Hover đúng dòng nền phía dưới khi rê chuột qua phần chữ trong ô soạn thảo (chỉ để dễ nhìn,
@@ -1982,21 +2024,13 @@ function closeSettingPopup() {
     on("btnOpenShortcutsEditor", "click", openShortcutsEditor);
     on("btnShortcutsEditorClose", "click", closeShortcutsEditor);
     on("btnShortcutsReset", "click", function() {
-        saveShortcuts({ moveUp: DEFAULT_SHORTCUTS.moveUp, moveDown: DEFAULT_SHORTCUTS.moveDown, toggleMB: DEFAULT_SHORTCUTS.toggleMB });
+        saveShortcuts({ moveUp: DEFAULT_SHORTCUTS.moveUp.slice(), moveDown: DEFAULT_SHORTCUTS.moveDown.slice(), toggleMB: DEFAULT_SHORTCUTS.toggleMB.slice() });
         renderShortcutsEditor();
     });
     ["btnShortcutMoveUp", "btnShortcutMoveDown", "btnShortcutToggleMB"].forEach(function(id) {
         var scBtn = document.getElementById(id);
         if (scBtn) scBtn.addEventListener("click", function() { startListeningForKey(scBtn, scBtn.getAttribute("data-shortcut")); });
     });
-    var cbFixMB = document.getElementById("toggle_fixMBPosition");
-    if (cbFixMB) {
-        cbFixMB.checked = isFixMBPosition();
-        cbFixMB.addEventListener("click", function(e) {
-            e.stopPropagation();
-            setFixMBPosition(this.checked);
-        });
-    }
     var cbSnapMB = document.getElementById("toggle_snapMultiBubble");
     if (cbSnapMB) {
         cbSnapMB.checked = isSnapMultiBubble();
@@ -3445,8 +3479,7 @@ function doMultipleBubblePaste() {
         texts: texts,
         styles: styles,
         selections: _mbSelections.slice(0, texts.length),
-        padding: 0,
-        fixPosition: isFixMBPosition()
+        padding: 0
     };
     _exec('TR_createTextLayersInStoredSelections(' + JSON.stringify(payload) + ')', document.getElementById("btnMultipleBubble"), function(res) {
         if (res === "") {
@@ -3473,43 +3506,38 @@ var _navHotkeyReleased = true; // edge-detect RIÊNG cho phím đổi dòng + MB
 var _bHotkeyReleased = true; // edge-detect riêng cho Win+Ctrl+Alt (bật/tắt Multiple Bubble)
 function pollHotkeys() {
     if (!_texterHotkeysEnabled) return; // Typer Box đang bị ẩn -> tắt hẳn các phím tắt bên dưới
-    cs.evalScript('getHotkeyCombo()', function(combo) {
-        // Win+Ctrl/Win+Alt LUÔN khoá cứng, bắn ngay lập tức — không còn cần chờ/debounce gì nữa,
-        // vì 3 chức năng còn lại giờ dùng Win+Shift+X (khác hẳn nhóm Ctrl/Alt), không còn đụng độ.
-        if (combo === "metaCtrl") {
+    cs.evalScript('getHotkeyCombo()', function(raw) {
+        var pressed = raw ? raw.split(",") : [];
+        // Win+Ctrl/Win+Alt LUÔN khoá cứng, bắn ngay lập tức, không chờ gì — không cho sửa trong
+        // Edit Shortcuts. Nếu người dùng tự gán 1 trong 3 chức năng còn lại trùng/chứa cả combo này,
+        // Win+Ctrl/Win+Alt vẫn ưu tiên bắn trước (đúng như đã thống nhất — tự chịu trách nhiệm).
+        if (pressed.length === 2 && pressed.indexOf("WIN") !== -1 && pressed.indexOf("CTRL") !== -1) {
             if (!hotkeyCanFire()) return;
             firePasteHotkey();
             return;
         }
-        if (combo === "metaAlt") {
+        if (pressed.length === 2 && pressed.indexOf("WIN") !== -1 && pressed.indexOf("ALT") !== -1) {
             if (!hotkeyCanFire()) return;
             fireCenterHotkey();
             return;
         }
-        if (combo && combo.indexOf("winShift:") === 0) {
-            var pressedKey = combo.slice("winShift:".length);
-            var sc = loadShortcuts();
-            if (pressedKey === sc.moveUp) {
-                if (!_navHotkeyReleased) return;
-                _navHotkeyReleased = false;
-                moveLine(-1);
-                return;
-            }
-            if (pressedKey === sc.moveDown) {
-                if (!_navHotkeyReleased) return;
-                _navHotkeyReleased = false;
-                moveLine(1);
-                return;
-            }
-            if (pressedKey === sc.toggleMB) {
-                if (!_bHotkeyReleased) return;
-                _bHotkeyReleased = false;
-                toggleMultipleBubble();
-                return;
-            }
-            // Bấm Win+Shift+chữ nào đó không khớp gán nào cả -> coi như không có phím nào được giữ
-            _navHotkeyReleased = true;
-            _bHotkeyReleased = true;
+        var sc = loadShortcuts();
+        if (comboMatches(pressed, sc.moveUp)) {
+            if (!_navHotkeyReleased) return;
+            _navHotkeyReleased = false;
+            moveLine(-1);
+            return;
+        }
+        if (comboMatches(pressed, sc.moveDown)) {
+            if (!_navHotkeyReleased) return;
+            _navHotkeyReleased = false;
+            moveLine(1);
+            return;
+        }
+        if (comboMatches(pressed, sc.toggleMB)) {
+            if (!_bHotkeyReleased) return;
+            _bHotkeyReleased = false;
+            toggleMultipleBubble();
             return;
         }
         // Không giữ tổ hợp liên quan nào -> sẵn sàng cho lần bắn kế tiếp

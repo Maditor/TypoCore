@@ -11,7 +11,11 @@ if (typeof JSON === "undefined") {
 }
 if (typeof JSON.parse !== "function") {
   JSON.parse = function(s) {
-    throw new Error("JSON.parse not available in this ExtendScript engine");
+    try {
+      return eval("(" + s + ")");
+    } catch (e) {
+      throw new Error("JSON.parse failed: " + e.message);
+    }
   };
 }
 if (typeof JSON.stringify !== "function") {
@@ -40,13 +44,16 @@ var _typoCoreLoaded = true;
 function getHotkeyCombo() {
   try {
     var k = ScriptUI.environment.keyboardState;
-    // Win+Ctrl/Win+Alt luôn khoá cứng, bắn ngay không cần chờ gì (không còn đụng độ với Win+Shift+X
-    // vì khác hẳn nhóm phím bổ trợ). Win+Shift+X (3 chức năng còn lại) do người dùng tự gán trong
-    // "Edit Shortcuts" -> trả về đúng ký tự đọc được (nếu có), để client tự so khớp.
-    if (k.metaKey && k.ctrlKey) return "metaCtrl";
-    if (k.metaKey && k.altKey) return "metaAlt";
-    if (k.metaKey && k.shiftKey && k.keyName) return "winShift:" + String(k.keyName).toUpperCase();
-    return "";
+    // Trả về TOÀN BỘ modifier + phím chữ đang giữ (dạng "WIN,CTRL,SHIFT,E"), giống hệt cách TypeR
+    // đọc phím — để client tự so khớp với tổ hợp người dùng đã gán (mảng đầy đủ, không chỉ 1 chữ).
+    // Trình duyệt không đọc được phím Win, nên phải đọc ở đây (ExtendScript) rồi gửi qua client.
+    var parts = [];
+    if (k.metaKey) parts.push("WIN");
+    if (k.ctrlKey) parts.push("CTRL");
+    if (k.altKey) parts.push("ALT");
+    if (k.shiftKey) parts.push("SHIFT");
+    if (k.keyName) parts.push(String(k.keyName).toUpperCase());
+    return parts.join(",");
   } catch (e) {
     return "";
   }

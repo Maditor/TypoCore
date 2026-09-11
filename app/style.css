@@ -1045,6 +1045,15 @@ button.flash-err {
 .setting-item input[type="checkbox"] {
     margin-right: 8px;
 }
+.setting-popup-credit {
+    padding: 5px 12px 6px;
+    font-size: 10px;
+    color: #777;
+    white-space: nowrap;
+    border-bottom: 1px solid #4a4a4a;
+    margin-bottom: 2px;
+    cursor: default;
+}
 
 .tt-setting-disabled {
     opacity: 0.4;
