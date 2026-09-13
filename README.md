@@ -23,7 +23,7 @@
   - **Auto Fit**: tự dò cỡ chữ lớn nhất vừa khít bóng thoại, có tuỳ chỉnh Ref No. (khoảng lề)
 - Dùng Center để canh lại thủ công khi Align tự động canh chưa như ý
   
-**Phím tắt — có thể tự tuỳ chỉnh**
+**Phím tắt — có thể tự tuỳ chỉnh(Chưa ổn định)**
 - Win+Ctrl: Dán · Win+Alt: Align (2 phím này cố định)
 - Win+Shift+E / D / B: Đổi dòng lên/xuống và bật/tắt Multiple Bubble trong Typer Box
 - Mở **Typer Box Setting → Edit Shortcuts** để tự đổi lại 3 phím trên nếu bị trùng với Photoshop/Windows
